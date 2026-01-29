@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Drum Score Lab",
@@ -30,8 +19,14 @@ export default function RootLayout({
           name="google-adsense-account"
           content="ca-pub-1785368984015044"
         />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body className={`${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>
+      <body>
         <Script
           id="adsbygoogle-init"
           async
