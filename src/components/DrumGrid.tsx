@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { jsPDF } from "jspdf";
 import {
   drumKit,
   instrumentByRow,
@@ -103,6 +104,8 @@ export default function DrumGrid() {
   );
   const [tripletMeasure, setTripletMeasure] = useState<number>(1);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const osmdExportRef = useRef<HTMLDivElement | null>(null);
 
   const columns = useMemo(
     () => measures * beatsPerMeasure * columnsPerBeat,
@@ -307,6 +310,86 @@ export default function DrumGrid() {
     [measures, notes]
   );
 
+  const exportSvgAsPng = async () => {
+    const svg = osmdExportRef.current?.querySelector("svg");
+    if (!svg) throw new Error("OSMD SVG not found");
+    const serializer = new XMLSerializer();
+    const svgText = serializer.serializeToString(svg);
+    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    try {
+      const img = new Image();
+      img.decoding = "async";
+      const svgWidth = svg.viewBox.baseVal.width || svg.clientWidth;
+      const svgHeight = svg.viewBox.baseVal.height || svg.clientHeight;
+      const width = Math.max(1, Math.ceil(svgWidth));
+      const height = Math.max(1, Math.ceil(svgHeight));
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context unavailable");
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = url;
+      });
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const exportPng = async () => {
+    if (!osmdExportRef.current) return;
+    setExportStatus("Exporting PNG...");
+    try {
+      const dataUrl = await exportSvgAsPng();
+      const link = document.createElement("a");
+      link.download = `drum-score-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      setExportStatus("PNG exported");
+    } catch (error) {
+      console.error(error);
+      setExportStatus("PNG export failed");
+    }
+  };
+
+  const exportPdf = async () => {
+    if (!osmdExportRef.current) return;
+    setExportStatus("Exporting PDF...");
+    try {
+      const dataUrl = await exportSvgAsPng();
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "pt",
+        format: "a4",
+      });
+      const img = new Image();
+      img.onload = () => {
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
+        const width = img.width * ratio;
+        const height = img.height * ratio;
+        const x = (pageWidth - width) / 2;
+        const y = (pageHeight - height) / 2;
+        pdf.addImage(img, "PNG", x, y, width, height);
+        pdf.save(`drum-score-${Date.now()}.pdf`);
+        setExportStatus("PDF exported");
+      };
+      img.src = dataUrl;
+    } catch (error) {
+      console.error(error);
+      setExportStatus("PDF export failed");
+    }
+  };
+
   return (
     <section className="grid-shell" aria-label="Drum staff editor">
       <header className="grid-header">
@@ -410,14 +493,16 @@ export default function DrumGrid() {
         <div className="control-block">
           <label>Export</label>
           <div className="button-row">
-            <button type="button" className="ghost" disabled>
-              PDF (Soon)
+            <button type="button" className="ghost" onClick={exportPdf}>
+              PDF
             </button>
-            <button type="button" className="ghost" disabled>
-              Image (Soon)
+            <button type="button" className="ghost" onClick={exportPng}>
+              Image
             </button>
           </div>
-          <span className="helper">後で追加できるように拡張設計</span>
+          <span className="helper">
+            {exportStatus ? exportStatus : "OSMDプレビューを書き出します"}
+          </span>
         </div>
       </div>
 
@@ -504,7 +589,7 @@ export default function DrumGrid() {
         <span>Ad Space (Auto ads)</span>
       </div>
 
-      <div className="osmd-panel">
+      <div className="osmd-panel" ref={osmdExportRef}>
         <div className="osmd-header">
           <h2>Notation Preview (OpenSheetMusicDisplay)</h2>
           <p className="subtle">
