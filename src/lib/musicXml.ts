@@ -246,8 +246,18 @@ export const buildMusicXml = ({
           });
         }
 
-        const rawDuration =
-          (globalNextTick.get(absoluteTick) ?? measureEndTick) - absoluteTick;
+        const beatIndex = Math.floor(
+          (absoluteTick - measureOffsetTicks) / ticksPerBeat
+        );
+        const beatEndTick = Math.min(
+          measureEndTick,
+          measureOffsetTicks + (beatIndex + 1) * ticksPerBeat
+        );
+        const nextTick = globalNextTick.get(absoluteTick) ?? measureEndTick;
+        const rawDuration = Math.max(
+          1,
+          Math.min(nextTick, beatEndTick) - absoluteTick
+        );
         const activeInstruments = drumKit.filter((instrument) =>
           notes.has(makeKey(instrument.row, absoluteTick))
         );
@@ -263,7 +273,7 @@ export const buildMusicXml = ({
           <voice>1</voice>
           <type>${restType}</type>
           ${restDot}
-          ${restTimeModification}
+              ${restTimeModification}
         </note>`);
           });
         } else {
@@ -310,7 +320,7 @@ export const buildMusicXml = ({
         </note>`);
           });
         }
-        cursor = globalNextTick.get(absoluteTick) ?? measureEndTick;
+        cursor = absoluteTick + rawDuration;
       });
 
       if (cursor < measureEndTick) {
