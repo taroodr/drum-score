@@ -329,6 +329,9 @@ export default function DrumGrid() {
           ))}
         </div>
       </header>
+      <div className="ad-zone" aria-label="Advertisement">
+        <span>Ad Space (Auto ads)</span>
+      </div>
 
       <div className="controls">
         <div className="control-block">
@@ -496,6 +499,9 @@ export default function DrumGrid() {
             );
           })}
         </div>
+      </div>
+      <div className="ad-zone" aria-label="Advertisement">
+        <span>Ad Space (Auto ads)</span>
       </div>
 
       <div className="osmd-panel">
