@@ -25,6 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
+      <head>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-1785368984015044"
+        />
+      </head>
       <body className={`${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>
         <Script
           id="adsbygoogle-init"
