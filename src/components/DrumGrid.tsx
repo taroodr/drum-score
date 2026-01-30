@@ -55,6 +55,33 @@ const ticksPerSubdivision = (subdivisions: number) =>
 const colToTick = (col: number, subdivisions: number) =>
   Math.round((col * ticksPerBeat) / subdivisions);
 
+const getRowByInstrumentId = (id: string) =>
+  drumKit.find((instrument) => instrument.id === id)?.gridRow ?? 0;
+
+const createDefaultNotes = (measures: number) => {
+  const totalBeats = measures * beatsPerMeasure;
+  const map = new Map<string, number>();
+  const hihatRow = getRowByInstrumentId("hihat");
+  const snareRow = getRowByInstrumentId("snare");
+  const kickRow = getRowByInstrumentId("kick");
+  const eighth = ticksPerBeat / 2;
+
+  for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
+    const beatStartTick = beatIndex * ticksPerBeat;
+    map.set(makeKey(hihatRow, beatStartTick), eighth);
+    map.set(makeKey(hihatRow, beatStartTick + eighth), eighth);
+    const beatInMeasure = beatIndex % beatsPerMeasure;
+    if (beatInMeasure === 1 || beatInMeasure === 3) {
+      map.set(makeKey(snareRow, beatStartTick), ticksPerBeat);
+    }
+    if (beatInMeasure === 0 || beatInMeasure === 2) {
+      map.set(makeKey(kickRow, beatStartTick), ticksPerBeat);
+    }
+  }
+
+  return map;
+};
+
 
 const deserializeNotes = (
   parsed: SavedGrid,
@@ -130,7 +157,16 @@ export default function DrumGrid() {
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      const defaultMeasures = 2;
+      setMeasures(defaultMeasures);
+      setSubdivisionsByBeat(
+        Array.from({ length: defaultMeasures * beatsPerMeasure }, () => 4)
+      );
+      setNotes(createDefaultNotes(defaultMeasures));
+      setLastSavedAt("Loaded default pattern");
+      return;
+    }
     try {
       const parsed = JSON.parse(raw) as SavedGrid;
       if (
@@ -161,10 +197,15 @@ export default function DrumGrid() {
         safeMeasures,
         fallbackSubdivisions
       );
+      const shouldSeedDefault =
+        (Array.isArray(parsed.notes) && parsed.notes.length === 0) ||
+        filtered.size === 0;
       setMeasures(safeMeasures);
       setSubdivisionsByBeat(safeSubdivisionsByBeat);
-      setNotes(filtered);
-      setLastSavedAt("Loaded local score");
+      setNotes(shouldSeedDefault ? createDefaultNotes(safeMeasures) : filtered);
+      setLastSavedAt(
+        shouldSeedDefault ? "Loaded default pattern" : "Loaded local score"
+      );
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
     }
