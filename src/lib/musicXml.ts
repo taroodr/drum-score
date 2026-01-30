@@ -7,6 +7,7 @@ type MusicXmlInput = {
   beatsPerMeasure: number;
   ticksPerBeat: number;
   notes: Map<string, number>;
+  subdivisionsByBeat?: number[];
 };
 
 const rowPitchMap: Pitch[] = [
@@ -69,6 +70,20 @@ const splitGap = (duration: number) => {
   return chunks;
 };
 
+const splitGapByBeat = (duration: number, isTriplet: boolean) => {
+  if (!isTriplet) return splitGap(duration);
+  const chunks: number[] = [];
+  let remaining = duration;
+  while (remaining >= 4) {
+    chunks.push(4);
+    remaining -= 4;
+  }
+  if (remaining > 0) {
+    chunks.push(remaining);
+  }
+  return chunks;
+};
+
 const escapeXml = (value: string) =>
   value
     .replaceAll("&", "&amp;")
@@ -92,6 +107,7 @@ export const buildMusicXml = ({
   beatsPerMeasure,
   ticksPerBeat,
   notes,
+  subdivisionsByBeat,
 }: MusicXmlInput) => {
   const divisions = ticksPerBeat;
   const measureTicks = beatsPerMeasure * ticksPerBeat;
@@ -165,12 +181,22 @@ export const buildMusicXml = ({
       }
     });
 
+    if (subdivisionsByBeat && subdivisionsByBeat.length >= beatsPerMeasure) {
+      const baseIndex = measureIndex * beatsPerMeasure;
+      beatInfo.forEach((info, index) => {
+        if (subdivisionsByBeat[baseIndex + index] === 3) {
+          info.isTriplet = true;
+        }
+      });
+    }
+
     beatInfo.forEach((info) => {
       info.indices.sort((a, b) => noteMeta[a].onset - noteMeta[b].onset);
     });
 
     const beam1States = new Array(globalOnsetTicks.length).fill("");
     const beam2States = new Array(globalOnsetTicks.length).fill("");
+    const beatIsTriplet = beatInfo.map((info) => info.isTriplet);
 
     const applyBeamsByGap = (
       indices: number[],
@@ -213,13 +239,44 @@ export const buildMusicXml = ({
       }
     });
 
+    const buildTupletNotation = (absoluteTick: number, duration: number) => {
+      const beatIndex = Math.floor(
+        (absoluteTick - measureOffsetTicks) / ticksPerBeat
+      );
+      if (beatIndex < 0 || beatIndex >= beatsPerMeasure) return "";
+      if (!beatIsTriplet[beatIndex]) return "";
+      const onsetInBeat =
+        (absoluteTick - measureOffsetTicks) % ticksPerBeat;
+      const endInBeat = Math.min(onsetInBeat + duration, ticksPerBeat);
+      const parts: string[] = [];
+      if (onsetInBeat === 0) {
+        parts.push(`<tuplet type="start" bracket="yes" number="1"/>`);
+      }
+      if (endInBeat >= ticksPerBeat) {
+        parts.push(`<tuplet type="stop" bracket="yes" number="1"/>`);
+      }
+      if (parts.length === 0) return "";
+      return `<notations>${parts.join("")}</notations>`;
+    };
+
     const notesXml: string[] = [];
     if (globalOnsetTicks.length === 0) {
-      splitGap(measureTicks).forEach((chunk) => {
-        const restType = durationToType(chunk);
-        const restTimeModification = durationToTimeModification(chunk);
-        const restDot = durationToDot(chunk);
-        notesXml.push(`
+      let restCursor = measureOffsetTicks;
+      while (restCursor < measureEndTick) {
+        const beatIndex = Math.floor(
+          (restCursor - measureOffsetTicks) / ticksPerBeat
+        );
+        const beatEndTick = Math.min(
+          measureEndTick,
+          measureOffsetTicks + (beatIndex + 1) * ticksPerBeat
+        );
+        const gap = beatEndTick - restCursor;
+        splitGapByBeat(gap, beatIsTriplet[beatIndex]).forEach((chunk) => {
+          const tupletTag = buildTupletNotation(restCursor, chunk);
+          const restType = durationToType(chunk);
+          const restTimeModification = durationToTimeModification(chunk);
+          const restDot = durationToDot(chunk);
+          notesXml.push(`
         <note>
           <rest />
           <duration>${chunk}</duration>
@@ -227,18 +284,31 @@ export const buildMusicXml = ({
           <type>${restType}</type>
           ${restDot}
           ${restTimeModification}
+          ${tupletTag}
         </note>`);
-      });
+          restCursor += chunk;
+        });
+      }
     } else {
       let cursor = measureOffsetTicks;
       globalOnsetTicks.forEach((absoluteTick, index) => {
         if (absoluteTick > cursor) {
-          const gap = absoluteTick - cursor;
-          splitGap(gap).forEach((chunk) => {
-            const restType = durationToType(chunk);
-            const restTimeModification = durationToTimeModification(chunk);
-            const restDot = durationToDot(chunk);
-            notesXml.push(`
+          let gapCursor = cursor;
+          while (gapCursor < absoluteTick) {
+            const beatIndex = Math.floor(
+              (gapCursor - measureOffsetTicks) / ticksPerBeat
+            );
+            const beatEndTick = Math.min(
+              measureEndTick,
+              measureOffsetTicks + (beatIndex + 1) * ticksPerBeat
+            );
+            const gap = Math.min(beatEndTick, absoluteTick) - gapCursor;
+            splitGapByBeat(gap, beatIsTriplet[beatIndex]).forEach((chunk) => {
+              const tupletTag = buildTupletNotation(gapCursor, chunk);
+              const restType = durationToType(chunk);
+              const restTimeModification = durationToTimeModification(chunk);
+              const restDot = durationToDot(chunk);
+              notesXml.push(`
         <note>
           <rest />
           <duration>${chunk}</duration>
@@ -246,8 +316,11 @@ export const buildMusicXml = ({
           <type>${restType}</type>
           ${restDot}
           ${restTimeModification}
+          ${tupletTag}
         </note>`);
-          });
+              gapCursor += chunk;
+            });
+          }
         }
 
         const beatIndex = Math.floor(
@@ -258,15 +331,21 @@ export const buildMusicXml = ({
           measureOffsetTicks + (beatIndex + 1) * ticksPerBeat
         );
         const nextTick = globalNextTick.get(absoluteTick) ?? measureEndTick;
-        const rawDuration = Math.max(
+        let rawDuration = Math.max(
           1,
           Math.min(nextTick, beatEndTick) - absoluteTick
         );
+        if (beatIsTriplet[beatIndex]) {
+          rawDuration = Math.min(rawDuration, 4);
+        }
         const activeInstruments = drumKit.filter((instrument) =>
           notes.has(makeKey(instrument.gridRow, absoluteTick))
         );
         if (activeInstruments.length === 0) {
-          splitGap(rawDuration).forEach((chunk) => {
+          let restCursor = absoluteTick;
+          splitGapByBeat(rawDuration, beatIsTriplet[beatIndex]).forEach(
+            (chunk) => {
+            const tupletTag = buildTupletNotation(restCursor, chunk);
             const restType = durationToType(chunk);
             const restTimeModification = durationToTimeModification(chunk);
             const restDot = durationToDot(chunk);
@@ -278,8 +357,11 @@ export const buildMusicXml = ({
           <type>${restType}</type>
           ${restDot}
               ${restTimeModification}
+              ${tupletTag}
         </note>`);
-          });
+            restCursor += chunk;
+          }
+          );
         } else {
           activeInstruments.forEach((instrument, chordIndex) => {
             const pitch = rowPitchMap[instrument.staffRow] ?? rowPitchMap[4];
@@ -303,6 +385,7 @@ export const buildMusicXml = ({
               }
             }
             const beamTag = beamParts.join("");
+            const notationTag = buildTupletNotation(absoluteTick, rawDuration);
             const chordTag = chordIndex > 0 ? "<chord/>" : "";
             notesXml.push(`
         <note>
@@ -321,6 +404,7 @@ export const buildMusicXml = ({
           ${noteHead}
           <staff>1</staff>
           ${beamTag}
+          ${notationTag}
         </note>`);
           });
         }
@@ -328,11 +412,22 @@ export const buildMusicXml = ({
       });
 
       if (cursor < measureEndTick) {
-        splitGap(measureEndTick - cursor).forEach((chunk) => {
-          const restType = durationToType(chunk);
-          const restTimeModification = durationToTimeModification(chunk);
-          const restDot = durationToDot(chunk);
-          notesXml.push(`
+        let restCursor = cursor;
+        while (restCursor < measureEndTick) {
+          const beatIndex = Math.floor(
+            (restCursor - measureOffsetTicks) / ticksPerBeat
+          );
+          const beatEndTick = Math.min(
+            measureEndTick,
+            measureOffsetTicks + (beatIndex + 1) * ticksPerBeat
+          );
+          const gap = beatEndTick - restCursor;
+          splitGapByBeat(gap, beatIsTriplet[beatIndex]).forEach((chunk) => {
+            const tupletTag = buildTupletNotation(restCursor, chunk);
+            const restType = durationToType(chunk);
+            const restTimeModification = durationToTimeModification(chunk);
+            const restDot = durationToDot(chunk);
+            notesXml.push(`
         <note>
           <rest />
           <duration>${chunk}</duration>
@@ -340,8 +435,11 @@ export const buildMusicXml = ({
           <type>${restType}</type>
           ${restDot}
           ${restTimeModification}
+          ${tupletTag}
         </note>`);
-        });
+            restCursor += chunk;
+          });
+        }
       }
     }
 
