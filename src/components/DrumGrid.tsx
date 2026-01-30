@@ -16,7 +16,7 @@ import OsmdViewer from "@/components/OsmdViewer";
 const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
 const ticksPerBeat = 12;
-const playbackBpm = 100;
+const defaultBpm = 100;
 const divisionOptions = [
   { value: 4, label: "16th" },
   { value: 2, label: "8th" },
@@ -110,6 +110,7 @@ const deserializeNotes = (
 export default function DrumGrid() {
   const [measures, setMeasures] = useState(2);
   const [notes, setNotes] = useState<Map<string, number>>(() => new Map());
+  const [bpm, setBpm] = useState(defaultBpm);
   const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
     () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
@@ -407,7 +408,7 @@ export default function DrumGrid() {
   const exportMidi = () => {
     setExportStatus("Exporting MIDI...");
     try {
-      const midiBytes = buildMidiFromMusicXml(musicXml);
+      const midiBytes = buildMidiFromMusicXml(musicXml, bpm);
       const blob = new Blob([midiBytes], { type: "audio/midi" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -460,7 +461,7 @@ export default function DrumGrid() {
       const buffers = await ensureSamplesLoaded(context);
 
       const startAt = context.currentTime + 0.05;
-      const secondsPerQuarter = 60 / playbackBpm;
+      const secondsPerQuarter = 60 / bpm;
       const secondsPerTick = secondsPerQuarter / divisions;
 
       notes.forEach((note) => {
@@ -535,6 +536,24 @@ export default function DrumGrid() {
               }
             />
             <span className="measure-caption">1-32</span>
+          </div>
+        </div>
+        <div className="control-block">
+          <label htmlFor="bpm-input">BPM</label>
+          <div className="measure-input">
+            <input
+              id="bpm-input"
+              type="number"
+              min={40}
+              max={240}
+              value={bpm}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (Number.isNaN(next)) return;
+                setBpm(Math.min(240, Math.max(40, next)));
+              }}
+            />
+            <span className="measure-caption">40-240</span>
           </div>
         </div>
         <div className="control-block">
