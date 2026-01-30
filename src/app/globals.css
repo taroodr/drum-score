@@ -232,6 +232,7 @@ h1 {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
   border: 1px solid #30353c;
+  border-bottom: none;
   border-radius: 8px;
   overflow: hidden;
   background: #262b31;
@@ -312,15 +313,6 @@ h1 {
   position: relative;
 }
 
-.label-row.line-row::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-}
 
 .staff-grid {
   display: grid;
@@ -350,15 +342,6 @@ h1 {
   box-shadow: inset 2px 0 0 #4a515b;
 }
 
-.staff-row.line-row::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-}
 
 .staff-row:last-child {
   border-bottom: none;
