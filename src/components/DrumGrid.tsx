@@ -82,6 +82,58 @@ const createDefaultNotes = (measures: number) => {
   return map;
 };
 
+const createRockNotes = (measures: number) => createDefaultNotes(measures);
+
+const createPopNotes = (measures: number) => {
+  const totalBeats = measures * beatsPerMeasure;
+  const map = new Map<string, number>();
+  const hihatRow = getRowByInstrumentId("hihat");
+  const snareRow = getRowByInstrumentId("snare");
+  const kickRow = getRowByInstrumentId("kick");
+  const eighth = ticksPerBeat / 2;
+
+  for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
+    const beatStartTick = beatIndex * ticksPerBeat;
+    map.set(makeKey(hihatRow, beatStartTick), eighth);
+    map.set(makeKey(hihatRow, beatStartTick + eighth), eighth);
+    const beatInMeasure = beatIndex % beatsPerMeasure;
+    if (beatInMeasure === 1 || beatInMeasure === 3) {
+      map.set(makeKey(snareRow, beatStartTick), ticksPerBeat);
+    }
+    if (beatInMeasure === 0) {
+      map.set(makeKey(kickRow, beatStartTick), ticksPerBeat);
+    }
+    if (beatInMeasure === 2) {
+      map.set(makeKey(kickRow, beatStartTick + eighth), eighth);
+    }
+  }
+
+  return map;
+};
+
+const createShuffleNotes = (measures: number) => {
+  const totalBeats = measures * beatsPerMeasure;
+  const map = new Map<string, number>();
+  const hihatRow = getRowByInstrumentId("hihat");
+  const snareRow = getRowByInstrumentId("snare");
+  const kickRow = getRowByInstrumentId("kick");
+
+  for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
+    const beatStartTick = beatIndex * ticksPerBeat;
+    map.set(makeKey(hihatRow, beatStartTick), 4);
+    map.set(makeKey(hihatRow, beatStartTick + 8), 4);
+    const beatInMeasure = beatIndex % beatsPerMeasure;
+    if (beatInMeasure === 1 || beatInMeasure === 3) {
+      map.set(makeKey(snareRow, beatStartTick), 4);
+    }
+    if (beatInMeasure === 0 || beatInMeasure === 2) {
+      map.set(makeKey(kickRow, beatStartTick), 4);
+    }
+  }
+
+  return map;
+};
+
 
 const deserializeNotes = (
   parsed: SavedGrid,
@@ -362,8 +414,9 @@ export default function DrumGrid() {
         beatsPerMeasure,
         ticksPerBeat,
         notes,
+        subdivisionsByBeat,
       }),
-    [measures, notes]
+    [measures, notes, subdivisionsByBeat]
   );
 
   const exportSvgAsPng = async () => {
@@ -536,15 +589,46 @@ export default function DrumGrid() {
     }
   };
 
+  const applySample = useCallback(
+    (mode: "rock" | "pop" | "shuffle") => {
+      const totalBeats = measures * beatsPerMeasure;
+      if (mode === "shuffle") {
+        setSubdivisionsByBeat(
+          Array.from({ length: totalBeats }, () => 3)
+        );
+        setNotes(createShuffleNotes(measures));
+        return;
+      }
+      setSubdivisionsByBeat(Array.from({ length: totalBeats }, () => 4));
+      if (mode === "pop") {
+        setNotes(createPopNotes(measures));
+      } else {
+        setNotes(createRockNotes(measures));
+      }
+    },
+    [measures]
+  );
+
   return (
-    <section className="grid-shell" aria-label="Drum staff editor">
+    <section
+      id="editor"
+      className="grid-shell"
+      aria-label="Drum staff editor"
+    >
       <header className="grid-header">
         <div>
-          <p className="eyebrow">Drum Score Builder</p>
-          <h1>クリックで叩けるドラム譜</h1>
+          <p className="eyebrow">無料のドラム譜作成ツール</p>
+          <h1>ドラム譜を作成・再生・書き出しできる無料エディタ</h1>
           <p className="subtle">
-            クリック入力で譜面作成。Divisionで分割を変更できます。
+            ドラム譜作成・ドラム譜ソフトを探している方向け。クリック入力で
+            楽譜作成、PDF/MIDI書き出し、再生に対応。
           </p>
+          <div className="headline-actions">
+            <a className="cta" href="#editor">
+              今すぐ打ち込み
+            </a>
+            <span className="cta-note">登録不要・無料</span>
+          </div>
         </div>
         <div className="legend">
           {drumKit.map((instrument) => (
@@ -563,6 +647,21 @@ export default function DrumGrid() {
       </div>
 
       <div className="controls">
+        <div className="control-block">
+          <label>Samples</label>
+          <div className="button-row">
+            <button type="button" className="ghost" onClick={() => applySample("rock")}>
+              Rock 8beat
+            </button>
+            <button type="button" className="ghost" onClick={() => applySample("pop")}>
+              Pop 8beat
+            </button>
+            <button type="button" className="ghost" onClick={() => applySample("shuffle")}>
+              Shuffle
+            </button>
+          </div>
+          <span className="helper">ワンクリックで譜面を読み込み</span>
+        </div>
         <div className="control-block">
           <label htmlFor="measure-input">Measures</label>
           <div className="measure-input">
