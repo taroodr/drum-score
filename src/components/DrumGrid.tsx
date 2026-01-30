@@ -9,12 +9,14 @@ import {
   staffRowCount,
 } from "@/lib/drumKit";
 import { buildMusicXml } from "@/lib/musicXml";
-import { buildMidiFromMusicXml } from "@/lib/midi";
+import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
+import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
 import OsmdViewer from "@/components/OsmdViewer";
 
 const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
 const ticksPerBeat = 12;
+const playbackBpm = 100;
 const divisionOptions = [
   { value: 4, label: "16th" },
   { value: 2, label: "8th" },
@@ -114,6 +116,11 @@ export default function DrumGrid() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const osmdExportRef = useRef<HTMLDivElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sampleBuffersRef = useRef<Map<string, AudioBuffer> | null>(null);
+  const sampleLoadingRef = useRef<Promise<Map<string, AudioBuffer>> | null>(
+    null
+  );
 
   const getSubdivisionsForBeat = useCallback(
     (globalBeatIndex: number) => subdivisionsByBeat[globalBeatIndex] ?? 4,
@@ -415,6 +422,78 @@ export default function DrumGrid() {
     }
   };
 
+  const ensureSamplesLoaded = async (context: AudioContext) => {
+    if (sampleBuffersRef.current) return sampleBuffersRef.current;
+    if (!sampleLoadingRef.current) {
+      sampleLoadingRef.current = loadDrumSamples(context);
+    }
+    try {
+      const buffers = await sampleLoadingRef.current;
+      sampleBuffersRef.current = buffers;
+      return buffers;
+    } catch (error) {
+      sampleLoadingRef.current = null;
+      throw error;
+    }
+  };
+
+  const playMidi = async () => {
+    setExportStatus("Playing...");
+    try {
+      const { divisions, notes } = parseMidiNotesFromMusicXml(musicXml);
+      if (!notes.length) {
+        setExportStatus("No notes to play");
+        return;
+      }
+
+      const context =
+        audioContextRef.current ??
+        new AudioContext({
+          latencyHint: "interactive",
+        });
+      audioContextRef.current = context;
+      if (context.state === "suspended") {
+        await context.resume();
+      }
+
+      setExportStatus("Loading samples...");
+      const buffers = await ensureSamplesLoaded(context);
+
+      const startAt = context.currentTime + 0.05;
+      const secondsPerQuarter = 60 / playbackBpm;
+      const secondsPerTick = secondsPerQuarter / divisions;
+
+      notes.forEach((note) => {
+        const startTime = startAt + note.startTick * secondsPerTick;
+        const endTime =
+          startAt + (note.startTick + note.duration) * secondsPerTick;
+        const sampleKey = midiToSampleKey(note.midi);
+        const buffer = sampleKey ? buffers.get(sampleKey) : undefined;
+        if (!buffer) return;
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        const gain = context.createGain();
+        gain.gain.setValueAtTime(0.9, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, endTime + 0.02);
+        source.connect(gain).connect(context.destination);
+        source.start(startTime);
+      });
+
+      const lastEnd = Math.max(
+        ...notes.map(
+          (note) => startAt + (note.startTick + note.duration) * secondsPerTick
+        )
+      );
+      setExportStatus("Playing...");
+      window.setTimeout(() => {
+        setExportStatus("Playback finished");
+      }, Math.max(0, (lastEnd - context.currentTime) * 1000) + 50);
+    } catch (error) {
+      console.error(error);
+      setExportStatus("Playback failed");
+    }
+  };
+
   return (
     <section className="grid-shell" aria-label="Drum staff editor">
       <header className="grid-header">
@@ -490,6 +569,17 @@ export default function DrumGrid() {
           </div>
           <span className="helper">
             {exportStatus ? exportStatus : "OSMDプレビューを書き出します"}
+          </span>
+        </div>
+        <div className="control-block">
+          <label>Playback</label>
+          <div className="button-row">
+            <button type="button" className="ghost" onClick={playMidi}>
+              Play
+            </button>
+          </div>
+          <span className="helper">
+            Drum samples: @teropa/drumkit (Freesound CC BY/CC0)
           </span>
         </div>
       </div>

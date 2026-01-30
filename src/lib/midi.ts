@@ -50,6 +50,65 @@ const buildInstrumentMidiMap = (doc: Document) => {
   return midiMap;
 };
 
+export type ParsedMidiNote = {
+  startTick: number;
+  duration: number;
+  midi: number;
+  velocity: number;
+};
+
+export const parseMidiNotesFromMusicXml = (
+  musicXml: string
+): { divisions: number; notes: ParsedMidiNote[] } => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(musicXml, "application/xml");
+  if (doc.querySelector("parsererror")) {
+    throw new Error("Invalid MusicXML");
+  }
+
+  const divisions = parseInteger(doc.querySelector("divisions"), 12);
+  const midiMap = buildInstrumentMidiMap(doc);
+  const notes: ParsedMidiNote[] = [];
+
+  let currentTick = 0;
+  let pendingAdvance = 0;
+
+  const measures = Array.from(doc.querySelectorAll("part > measure"));
+  measures.forEach((measure) => {
+    const measureNotes = Array.from(measure.querySelectorAll(":scope > note"));
+    measureNotes.forEach((note) => {
+      const duration = parseInteger(note.querySelector("duration"), 0);
+      const isRest = Boolean(note.querySelector("rest"));
+      const isChord = Boolean(note.querySelector("chord"));
+
+      if (!isChord) {
+        currentTick += pendingAdvance;
+        pendingAdvance = duration;
+      }
+
+      if (isRest) return;
+
+      const instrumentId = note
+        .querySelector("instrument")
+        ?.getAttribute("id");
+      const midi = instrumentId ? midiMap.get(instrumentId) : undefined;
+      if (!midi) return;
+
+      notes.push({
+        startTick: currentTick,
+        duration,
+        midi,
+        velocity: 100,
+      });
+    });
+
+    currentTick += pendingAdvance;
+    pendingAdvance = 0;
+  });
+
+  return { divisions, notes };
+};
+
 export const buildMidiFromMusicXml = (musicXml: string, bpm = 120) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(musicXml, "application/xml");
