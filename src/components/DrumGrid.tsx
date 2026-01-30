@@ -201,6 +201,8 @@ export default function DrumGrid() {
   const sampleLoadingRef = useRef<Promise<Map<string, AudioBuffer>> | null>(
     null
   );
+  const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const playbackTimeoutsRef = useRef<number[]>([]);
 
   const getSubdivisionsForBeat = useCallback(
     (globalBeatIndex: number) => subdivisionsByBeat[globalBeatIndex] ?? 4,
@@ -532,9 +534,24 @@ export default function DrumGrid() {
     }
   };
 
+  const stopPlayback = () => {
+    playbackSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // ignore
+      }
+    });
+    playbackSourcesRef.current = [];
+    playbackTimeoutsRef.current.forEach((timer) => window.clearTimeout(timer));
+    playbackTimeoutsRef.current = [];
+    setExportStatus("Playback stopped");
+  };
+
   const playMidi = async () => {
     setExportStatus("Playing...");
     try {
+      stopPlayback();
       const { divisions, notes } = parseMidiNotesFromMusicXml(musicXml);
       if (!notes.length) {
         setExportStatus("No notes to play");
@@ -572,6 +589,7 @@ export default function DrumGrid() {
         gain.gain.exponentialRampToValueAtTime(0.001, endTime + 0.02);
         source.connect(gain).connect(context.destination);
         source.start(startTime);
+        playbackSourcesRef.current.push(source);
       });
 
       const lastEnd = Math.max(
@@ -580,9 +598,14 @@ export default function DrumGrid() {
         )
       );
       setExportStatus("Playing...");
-      window.setTimeout(() => {
+      const timer = window.setTimeout(() => {
         setExportStatus("Playback finished");
+        playbackSourcesRef.current = [];
+        playbackTimeoutsRef.current = playbackTimeoutsRef.current.filter(
+          (id) => id !== timer
+        );
       }, Math.max(0, (lastEnd - context.currentTime) * 1000) + 50);
+      playbackTimeoutsRef.current.push(timer);
     } catch (error) {
       console.error(error);
       setExportStatus("Playback failed");
@@ -735,6 +758,9 @@ export default function DrumGrid() {
           <div className="button-row">
             <button type="button" className="ghost" onClick={playMidi}>
               Play
+            </button>
+            <button type="button" className="ghost" onClick={stopPlayback}>
+              Stop
             </button>
           </div>
           <span className="helper">
