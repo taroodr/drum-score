@@ -9,6 +9,7 @@ import {
   staffRowCount,
 } from "@/lib/drumKit";
 import { buildMusicXml } from "@/lib/musicXml";
+import { buildMidiFromMusicXml } from "@/lib/midi";
 import OsmdViewer from "@/components/OsmdViewer";
 
 const STORAGE_KEY = "drum-score:v1";
@@ -396,6 +397,24 @@ export default function DrumGrid() {
     }
   };
 
+  const exportMidi = () => {
+    setExportStatus("Exporting MIDI...");
+    try {
+      const midiBytes = buildMidiFromMusicXml(musicXml);
+      const blob = new Blob([midiBytes], { type: "audio/midi" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `drum-score-${Date.now()}.mid`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportStatus("MIDI exported");
+    } catch (error) {
+      console.error(error);
+      setExportStatus("MIDI export failed");
+    }
+  };
+
   return (
     <section className="grid-shell" aria-label="Drum staff editor">
       <header className="grid-header">
@@ -464,6 +483,9 @@ export default function DrumGrid() {
             </button>
             <button type="button" className="ghost" onClick={exportPng}>
               Image
+            </button>
+            <button type="button" className="ghost" onClick={exportMidi}>
+              MIDI
             </button>
           </div>
           <span className="helper">
