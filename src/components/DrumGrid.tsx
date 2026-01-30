@@ -14,16 +14,20 @@ import OsmdViewer from "@/components/OsmdViewer";
 const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
 const ticksPerBeat = 12;
-const columnsPerBeat = 4;
+const divisionOptions = [
+  { value: 4, label: "16th" },
+  { value: 2, label: "8th" },
+  { value: 3, label: "16th triplet" },
+] as const;
 
 type SavedGrid = {
-  version: 4 | 3 | 2 | 1;
+  version: 7 | 6 | 5 | 4 | 3 | 2 | 1;
   measures: number;
   beatsPerMeasure: number;
   subdivisions: number;
-  notes:
-    | string[]
-    | { row: number; tick: number; duration: number }[];
+  notes: string[] | { row: number; tick: number; duration: number }[];
+  subdivisionsPerMeasure?: number[];
+  subdivisionsPerBeat?: number[];
   tripletBeats?: string[];
 };
 
@@ -48,8 +52,6 @@ const ticksPerSubdivision = (subdivisions: number) =>
 const colToTick = (col: number, subdivisions: number) =>
   Math.round((col * ticksPerBeat) / subdivisions);
 
-const makeBeatKey = (measureIndex: number, beatIndex: number) =>
-  `${measureIndex}:${beatIndex}`;
 
 const deserializeNotes = (
   parsed: SavedGrid,
@@ -59,7 +61,13 @@ const deserializeNotes = (
   const maxTick = safeMeasures * beatsPerMeasure * ticksPerBeat;
   const next = new Map<string, number>();
 
-  if ((parsed.version === 3 || parsed.version === 4) && Array.isArray(parsed.notes)) {
+  if (
+    (parsed.version === 3 ||
+      parsed.version === 4 ||
+      parsed.version === 5 ||
+      parsed.version === 6) &&
+    Array.isArray(parsed.notes)
+  ) {
     parsed.notes.forEach((note) => {
       if (typeof note !== "object" || note === null) return;
       const { row, tick, duration } = note as {
@@ -99,17 +107,16 @@ const deserializeNotes = (
 export default function DrumGrid() {
   const [measures, setMeasures] = useState(2);
   const [notes, setNotes] = useState<Map<string, number>>(() => new Map());
-  const [tripletBeats, setTripletBeats] = useState<Set<string>>(
-    () => new Set()
+  const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
+    () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
-  const [tripletMeasure, setTripletMeasure] = useState<number>(1);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const osmdExportRef = useRef<HTMLDivElement | null>(null);
 
-  const columns = useMemo(
-    () => measures * beatsPerMeasure * columnsPerBeat,
-    [measures]
+  const getSubdivisionsForBeat = useCallback(
+    (globalBeatIndex: number) => subdivisionsByBeat[globalBeatIndex] ?? 4,
+    [subdivisionsByBeat]
   );
 
   useEffect(() => {
@@ -121,28 +128,33 @@ export default function DrumGrid() {
         parsed.version !== 1 &&
         parsed.version !== 2 &&
         parsed.version !== 3 &&
-        parsed.version !== 4
+        parsed.version !== 4 &&
+        parsed.version !== 5 &&
+        parsed.version !== 6 &&
+        parsed.version !== 7
       )
         return;
       const safeMeasures = clampMeasures(parsed.measures ?? 2);
-      const safeSubdivisions =
-        typeof parsed.subdivisions === "number"
-          ? parsed.subdivisions
-          : columnsPerBeat;
+      const totalBeats = safeMeasures * beatsPerMeasure;
+      const fallbackSubdivisions =
+        typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
+      const safeSubdivisionsByBeat =
+        parsed.subdivisionsPerBeat?.length === totalBeats
+          ? parsed.subdivisionsPerBeat
+          : parsed.subdivisionsPerMeasure?.length === safeMeasures
+            ? Array.from({ length: totalBeats }, (_, index) => {
+                const measureIndex = Math.floor(index / beatsPerMeasure);
+                return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
+              })
+            : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
       const filtered = deserializeNotes(
         parsed,
         safeMeasures,
-        safeSubdivisions
-      );
-      const loadedTriplets = new Set(
-        Array.isArray(parsed.tripletBeats) ? parsed.tripletBeats : []
+        fallbackSubdivisions
       );
       setMeasures(safeMeasures);
+      setSubdivisionsByBeat(safeSubdivisionsByBeat);
       setNotes(filtered);
-      setTripletBeats(loadedTriplets);
-      setTripletMeasure((prev) =>
-        Math.min(Math.max(prev, 1), safeMeasures)
-      );
       setLastSavedAt("Loaded local score");
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
@@ -150,41 +162,40 @@ export default function DrumGrid() {
   }, []);
 
   const toggleNote = useCallback(
-    (row: number, col: number) => {
+    (
+      row: number,
+      measureIndex: number,
+      beatIndex: number,
+      colInBeat: number,
+      subdivisions: number
+    ) => {
       setNotes((prev) => {
         const next = new Map(prev);
-        const columnsPerMeasure = beatsPerMeasure * columnsPerBeat;
-        const measureIndex = Math.floor(col / columnsPerMeasure);
-        const colWithinMeasure = col % columnsPerMeasure;
-        const beatIndex = Math.floor(colWithinMeasure / columnsPerBeat);
-        const colInBeat = colWithinMeasure % columnsPerBeat;
-        const isTriplet = tripletBeats.has(
-          makeBeatKey(measureIndex, beatIndex)
-        );
-        const tripletIndex = Math.floor(
-          (colInBeat * 3) / columnsPerBeat
-        );
-        const beatStartTick =
-          (measureIndex * beatsPerMeasure + beatIndex) * ticksPerBeat;
-        const tick = isTriplet
-          ? beatStartTick + tripletIndex * 4
-          : beatStartTick + colInBeat * 3;
+        const globalBeatIndex = measureIndex * beatsPerMeasure + beatIndex;
+        const beatStartTick = globalBeatIndex * ticksPerBeat;
+        const tick =
+          beatStartTick + colInBeat * ticksPerSubdivision(subdivisions);
         const key = makeKey(row, tick);
         if (next.has(key)) {
           next.delete(key);
         } else {
-          next.set(key, isTriplet ? 4 : 3);
+          next.set(key, ticksPerSubdivision(subdivisions));
         }
         return next;
       });
     },
-    [tripletBeats]
+    []
   );
 
   const handleMeasureChange = (value: number) => {
     const nextMeasures = clampMeasures(value);
     setMeasures(nextMeasures);
-    setTripletMeasure((prev) => Math.min(Math.max(prev, 1), nextMeasures));
+    setSubdivisionsByBeat((prev) =>
+      Array.from(
+        { length: nextMeasures * beatsPerMeasure },
+        (_, index) => prev[index] ?? 4
+      )
+    );
     setNotes((prev) => {
       const next = new Map<string, number>();
       const maxTick = nextMeasures * beatsPerMeasure * ticksPerBeat;
@@ -197,44 +208,33 @@ export default function DrumGrid() {
       });
       return next;
     });
-    setTripletBeats((prev) => {
-      const next = new Set<string>();
-      prev.forEach((key) => {
-        const parsedKey = key.split(":").map(Number);
-        if (parsedKey.length !== 2) return;
-        const [measureIndex] = parsedKey;
-        if (Number.isNaN(measureIndex)) return;
-        if (measureIndex < nextMeasures) {
-          next.add(key);
-        }
-      });
-      return next;
-    });
   };
 
   const handleClear = () => {
     setNotes(new Map());
   };
 
-  const handleTripletToggle = (measureIndex: number, beatIndex: number) => {
-    setTripletBeats((prev) => {
-      const next = new Set(prev);
-      const key = makeBeatKey(measureIndex, beatIndex);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+  const handleBeatDivisionToggle = (globalBeatIndex: number) => {
+    setSubdivisionsByBeat((prev) => {
+      const current = prev[globalBeatIndex] ?? 4;
+      const optionIndex = divisionOptions.findIndex(
+        (option) => option.value === current
+      );
+      const nextOption =
+        divisionOptions[(optionIndex + 1) % divisionOptions.length];
+      const next = [...prev];
+      next[globalBeatIndex] = nextOption.value;
       return next;
     });
   };
 
   const handleSave = () => {
     const payload: SavedGrid = {
-      version: 4,
+      version: 7,
       measures,
       beatsPerMeasure,
-      subdivisions: columnsPerBeat,
+      subdivisions: 4,
+      subdivisionsPerBeat: subdivisionsByBeat,
       notes: Array.from(notes.entries()).map(([key, duration]) => {
         const parsedKey = parseKey(key);
         return {
@@ -243,7 +243,6 @@ export default function DrumGrid() {
           duration,
         };
       }),
-      tripletBeats: Array.from(tripletBeats),
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     setLastSavedAt(new Date().toLocaleString());
@@ -261,30 +260,35 @@ export default function DrumGrid() {
         parsed.version !== 1 &&
         parsed.version !== 2 &&
         parsed.version !== 3 &&
-        parsed.version !== 4
+        parsed.version !== 4 &&
+        parsed.version !== 5 &&
+        parsed.version !== 6 &&
+        parsed.version !== 7
       ) {
         setLastSavedAt("Unsupported save format");
         return;
       }
       const safeMeasures = clampMeasures(parsed.measures ?? 2);
-      const safeSubdivisions =
-        typeof parsed.subdivisions === "number"
-          ? parsed.subdivisions
-          : columnsPerBeat;
+      const totalBeats = safeMeasures * beatsPerMeasure;
+      const fallbackSubdivisions =
+        typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
+      const safeSubdivisionsByBeat =
+        parsed.subdivisionsPerBeat?.length === totalBeats
+          ? parsed.subdivisionsPerBeat
+          : parsed.subdivisionsPerMeasure?.length === safeMeasures
+            ? Array.from({ length: totalBeats }, (_, index) => {
+                const measureIndex = Math.floor(index / beatsPerMeasure);
+                return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
+              })
+            : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
       const filtered = deserializeNotes(
         parsed,
         safeMeasures,
-        safeSubdivisions
-      );
-      const loadedTriplets = new Set(
-        Array.isArray(parsed.tripletBeats) ? parsed.tripletBeats : []
+        fallbackSubdivisions
       );
       setMeasures(safeMeasures);
+      setSubdivisionsByBeat(safeSubdivisionsByBeat);
       setNotes(filtered);
-      setTripletBeats(loadedTriplets);
-      setTripletMeasure((prev) =>
-        Math.min(Math.max(prev, 1), safeMeasures)
-      );
       setLastSavedAt("Loaded local score");
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
@@ -296,9 +300,11 @@ export default function DrumGrid() {
     () => Array.from({ length: staffRowCount }, (_, row) => row),
     []
   );
-  const cols = useMemo(() => Array.from({ length: columns }, (_, i) => i), [
-    columns,
-  ]);
+  const getDivisionLabel = useCallback((value: number) => {
+    if (value === 2) return "8th";
+    if (value === 3) return "16th triplet";
+    return "16th";
+  }, []);
   const musicXml = useMemo(
     () =>
       buildMusicXml({
@@ -397,7 +403,7 @@ export default function DrumGrid() {
           <p className="eyebrow">Drum Score Builder</p>
           <h1>クリックで叩けるドラム譜</h1>
           <p className="subtle">
-            1小節は常に16分グリッド。拍ごとに三連符へ切り替え可能。
+            クリック入力で譜面作成。Divisionで分割を変更できます。
           </p>
         </div>
         <div className="legend">
@@ -434,46 +440,6 @@ export default function DrumGrid() {
           </div>
         </div>
         <div className="control-block">
-          <label htmlFor="triplet-measure">Triplet Beat</label>
-          <div className="measure-input">
-            <input
-              id="triplet-measure"
-              type="number"
-              min={1}
-              max={measures}
-              value={tripletMeasure}
-              onChange={(event) =>
-                setTripletMeasure(
-                  Math.min(
-                    Math.max(1, Number(event.target.value)),
-                    measures
-                  )
-                )
-              }
-            />
-            <span className="measure-caption">Measure</span>
-          </div>
-          <div className="button-row beat-row">
-            {Array.from({ length: beatsPerMeasure }, (_, beatIndex) => {
-              const key = makeBeatKey(tripletMeasure - 1, beatIndex);
-              const active = tripletBeats.has(key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`ghost ${active ? "active" : ""}`}
-                  onClick={() =>
-                    handleTripletToggle(tripletMeasure - 1, beatIndex)
-                  }
-                >
-                  Beat {beatIndex + 1}
-                </button>
-              );
-            })}
-          </div>
-          <span className="helper">選択した拍を三連符グリッドにする</span>
-        </div>
-        <div className="control-block">
           <label>Storage</label>
           <div className="button-row">
             <button type="button" onClick={handleSave}>
@@ -506,8 +472,67 @@ export default function DrumGrid() {
         </div>
       </div>
 
+      <div className="grid-division" aria-label="Division grid header">
+        <div className="division-label">
+          <span>Division</span>
+        </div>
+        <div className="division-grid">
+          {Array.from({ length: measures }, (_, measureIndex) => {
+            return (
+              <div
+                key={`division-measure-${measureIndex}`}
+                className="division-measure"
+              >
+                {Array.from({ length: beatsPerMeasure }, (_, beatIndex) => {
+                  const globalBeatIndex =
+                    measureIndex * beatsPerMeasure + beatIndex;
+                  const subdivisions =
+                    getSubdivisionsForBeat(globalBeatIndex);
+                  const divisionLabel = getDivisionLabel(subdivisions);
+                  return (
+                    <button
+                      key={`division-beat-${measureIndex}-${beatIndex}`}
+                      type="button"
+                      className={`division-beat ${
+                        beatIndex === 0 ? "measure-start" : ""
+                      }`}
+                      style={{
+                        gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
+                      }}
+                      onClick={() => handleBeatDivisionToggle(globalBeatIndex)}
+                    >
+                      {Array.from(
+                        { length: subdivisions },
+                        (_, colInBeat) => {
+                          const isBeatStart = colInBeat === 0;
+                          const label = `${colInBeat + 1} ${divisionLabel}`;
+                          return (
+                            <span
+                              key={`division-${measureIndex}-${beatIndex}-${colInBeat}`}
+                              className={`division-cell ${
+                                isBeatStart ? "beat-start" : ""
+                              }`}
+                            >
+                              {label}
+                            </span>
+                          );
+                        }
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="staff-wrap" role="grid" aria-label="Drum staff grid">
-        <div className="staff-labels" aria-hidden>
+        <div
+          className="staff-labels"
+          aria-hidden
+          style={{ gridTemplateRows: `repeat(${rows.length}, 24px)` }}
+        >
           {rows.map((row) => {
             const instrument = instrumentByRow.get(row);
             const isLine = staffLineRows.has(row);
@@ -521,7 +546,10 @@ export default function DrumGrid() {
             );
           })}
         </div>
-        <div className="staff-grid">
+        <div
+          className="staff-grid"
+          style={{ gridTemplateRows: `repeat(${rows.length}, 24px)` }}
+        >
           {rows.map((row) => {
             const instrument = instrumentByRow.get(row);
             const isLine = staffLineRows.has(row);
@@ -529,55 +557,79 @@ export default function DrumGrid() {
               <div
                 key={`row-${row}`}
                 className={`staff-row ${isLine ? "line-row" : ""}`}
-                style={{ gridTemplateColumns: `repeat(${columns}, minmax(24px, 1fr))` }}
               >
-                {cols.map((col) => {
-                  const columnsPerMeasure = beatsPerMeasure * columnsPerBeat;
-                  const measureIndex = Math.floor(col / columnsPerMeasure);
-                  const colWithinMeasure = col % columnsPerMeasure;
-                  const beatIndex = Math.floor(
-                    colWithinMeasure / columnsPerBeat
-                  );
-                  const colInBeat = colWithinMeasure % columnsPerBeat;
-                  const isTriplet = tripletBeats.has(
-                    makeBeatKey(measureIndex, beatIndex)
-                  );
-                  const tripletIndex = Math.floor(
-                    (colInBeat * 3) / columnsPerBeat
-                  );
-                  const beatStartTick =
-                    (measureIndex * beatsPerMeasure + beatIndex) * ticksPerBeat;
-                  const tick = isTriplet
-                    ? beatStartTick + tripletIndex * 4
-                    : beatStartTick + colInBeat * 3;
-                  const cellKey = makeKey(row, tick);
-                  const active = notes.has(cellKey);
-                  const isMeasureStart =
-                    col % (beatsPerMeasure * columnsPerBeat) === 0;
-                  const isBeatStart = colInBeat === 0;
+                {Array.from({ length: measures }, (_, measureIndex) => {
                   return (
-                    <button
-                      key={cellKey}
-                      type="button"
-                      className={`cell ${active ? "active" : ""} ${isMeasureStart ? "measure-start" : ""} ${isBeatStart ? "beat-start" : ""} ${isTriplet ? "triplet-beat" : ""}`}
-                      onClick={() =>
-                        instrument && toggleNote(row, col)
-                      }
-                      disabled={!instrument}
-                      aria-label={
-                        instrument
-                          ? `${instrument.label} ${col + 1}`
-                          : `Empty row ${row + 1}`
-                      }
+                    <div
+                      key={`row-${row}-measure-${measureIndex}`}
+                      className="staff-measure"
                     >
-                      {active && instrument ? (
-                        instrument.noteHead === "x" ? (
-                          <span className="note-x">x</span>
-                        ) : (
-                          <span className="note-dot" />
-                        )
-                      ) : null}
-                    </button>
+                      {Array.from({ length: beatsPerMeasure }, (_, beatIndex) => {
+                        const globalBeatIndex =
+                          measureIndex * beatsPerMeasure + beatIndex;
+                        const subdivisions =
+                          getSubdivisionsForBeat(globalBeatIndex);
+                        return (
+                          <div
+                            key={`row-${row}-measure-${measureIndex}-beat-${beatIndex}`}
+                            className={`staff-beat ${
+                              beatIndex === 0 ? "measure-start" : ""
+                            }`}
+                            style={{
+                              gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
+                            }}
+                          >
+                            {Array.from(
+                              { length: subdivisions },
+                              (_, colInBeat) => {
+                                const beatStartTick =
+                                  globalBeatIndex * ticksPerBeat;
+                                const tick =
+                                  beatStartTick +
+                                  colInBeat *
+                                    ticksPerSubdivision(subdivisions);
+                                const cellKey = makeKey(row, tick);
+                                const active = notes.has(cellKey);
+                                const isBeatStart = colInBeat === 0;
+                                return (
+                                  <button
+                                    key={cellKey}
+                                    type="button"
+                                    className={`cell ${
+                                      active ? "active" : ""
+                                    } ${isBeatStart ? "beat-start" : ""}`}
+                                    onClick={() =>
+                                      instrument &&
+                                      toggleNote(
+                                        row,
+                                        measureIndex,
+                                        beatIndex,
+                                        colInBeat,
+                                        subdivisions
+                                      )
+                                    }
+                                    disabled={!instrument}
+                                    aria-label={
+                                      instrument
+                                        ? `${instrument.label} ${colInBeat + 1}`
+                                        : `Empty row ${row + 1}`
+                                    }
+                                  >
+                                    {active && instrument ? (
+                                      instrument.noteHead === "x" ? (
+                                        <span className="note-x">x</span>
+                                      ) : (
+                                        <span className="note-dot" />
+                                      )
+                                    ) : null}
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>

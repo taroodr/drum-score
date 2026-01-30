@@ -25,11 +25,15 @@ const midiUnpitched: Record<string, number> = {
   crash: 49,
   ride: 51,
   hihat: 42,
+  "open-hihat": 46,
+  "hh-pedal": 44,
   tom1: 48,
   tom2: 45,
   tom3: 43,
   snare: 38,
+  "cross-stick": 37,
   kick: 36,
+  kick2: 35,
 };
 
 const durationToType = (duration: number) => {
@@ -259,7 +263,7 @@ export const buildMusicXml = ({
           Math.min(nextTick, beatEndTick) - absoluteTick
         );
         const activeInstruments = drumKit.filter((instrument) =>
-          notes.has(makeKey(instrument.row, absoluteTick))
+          notes.has(makeKey(instrument.gridRow, absoluteTick))
         );
         if (activeInstruments.length === 0) {
           splitGap(rawDuration).forEach((chunk) => {
@@ -278,7 +282,7 @@ export const buildMusicXml = ({
           });
         } else {
           activeInstruments.forEach((instrument, chordIndex) => {
-            const pitch = rowPitchMap[instrument.row] ?? rowPitchMap[4];
+            const pitch = rowPitchMap[instrument.staffRow] ?? rowPitchMap[4];
             const instrumentId = `P1-${instrument.id}`;
             const noteHead =
               instrument.noteHead === "x" ? "<notehead>x</notehead>" : "";
