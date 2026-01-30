@@ -28,6 +28,19 @@ export default function RootLayout({
       </head>
       <body>
         <Script
+          id="gtag-src"
+          strategy="afterInteractive"
+          src="https://www.googletagmanager.com/gtag/js?id=G-ZH793J5EM6"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-ZH793J5EM6');
+          `}
+        </Script>
+        <Script
           id="adsbygoogle-init"
           async
           strategy="afterInteractive"
