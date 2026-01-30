@@ -334,6 +334,7 @@ h1 {
   display: flex;
   position: relative;
   width: max-content;
+  border-bottom: 1px solid #2c323a;
 }
 
 .staff-measure {
@@ -359,6 +360,10 @@ h1 {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.staff-row:last-child {
+  border-bottom: none;
+}
+
 .cell {
   all: unset;
   width: 100%;
@@ -366,6 +371,7 @@ h1 {
   background: #222831;
   border: none;
   border-right: 1px solid #2c323a;
+  border-bottom: 1px solid #2c323a;
   display: grid;
   place-items: center;
   position: relative;
