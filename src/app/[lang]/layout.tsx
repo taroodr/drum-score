@@ -48,12 +48,47 @@ const buildMetadata = (lang: "en" | "ja"): Metadata => {
     },
     alternates: {
       languages: {
+        nl: "/nl",
+        id: "/id",
+        de: "/de",
         en: "/en",
+        es: "/es",
+        fr: "/fr",
+        it: "/it",
+        pl: "/pl",
+        pt: "/pt",
+        vi: "/vi",
+        tr: "/tr",
+        ru: "/ru",
+        ar: "/ar",
+        th: "/th",
         ja: "/ja",
+        zh: "/zh",
+        ko: "/ko",
       },
     },
   };
 };
+
+const supportedLocales = [
+  "nl",
+  "id",
+  "de",
+  "en",
+  "es",
+  "fr",
+  "it",
+  "pl",
+  "pt",
+  "vi",
+  "tr",
+  "ru",
+  "ar",
+  "th",
+  "ja",
+  "zh",
+  "ko",
+] as const;
 
 export async function generateMetadata({
   params,
@@ -69,10 +104,12 @@ export default async function LangLayout({
   params,
   children,
 }: {
-  params: Promise<{ lang: "en" | "ja" }>;
+  params: Promise<{ lang: string }>;
   children: React.ReactNode;
 }) {
   const resolved = await params;
-  const lang = resolved.lang === "ja" ? "ja" : "en";
+  const lang = supportedLocales.includes(resolved.lang as (typeof supportedLocales)[number])
+    ? (resolved.lang as (typeof supportedLocales)[number])
+    : "en";
   return <LanguageProvider initialLocale={lang}>{children}</LanguageProvider>;
 }

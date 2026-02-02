@@ -1,11 +1,27 @@
-import { notFound } from "next/navigation";
-
 type PageProps = {
   params: Promise<{ lang: string }>;
 };
 
 export function generateStaticParams() {
-  return [{ lang: "en" }, { lang: "ja" }];
+  return [
+    { lang: "nl" },
+    { lang: "id" },
+    { lang: "de" },
+    { lang: "en" },
+    { lang: "es" },
+    { lang: "fr" },
+    { lang: "it" },
+    { lang: "pl" },
+    { lang: "pt" },
+    { lang: "vi" },
+    { lang: "tr" },
+    { lang: "ru" },
+    { lang: "ar" },
+    { lang: "th" },
+    { lang: "ja" },
+    { lang: "zh" },
+    { lang: "ko" },
+  ];
 }
 
 const content = {
@@ -25,10 +41,7 @@ const content = {
 
 export default async function ContactPage({ params }: PageProps) {
   const resolved = await params;
-  if (resolved.lang !== "en" && resolved.lang !== "ja") {
-    notFound();
-  }
-  const copy = content[resolved.lang];
+  const copy = content[resolved.lang === "ja" ? "ja" : "en"];
   return (
     <main className="legal-page">
       <h1>{copy.title}</h1>

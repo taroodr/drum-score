@@ -16,18 +16,17 @@ const STORAGE_KEY = "drum-score:lang";
 
 export const LanguageProvider = ({
   children,
+  initialLocale = "en",
 }: {
   children: React.ReactNode;
+  initialLocale?: Locale;
 }) => {
-  const [locale, setLocaleState] = useState<Locale>("en");
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "en" || stored === "ja") {
-      setLocaleState(stored);
-      document.documentElement.lang = stored;
-    }
-  }, []);
+    document.documentElement.lang = initialLocale;
+    window.localStorage.setItem(STORAGE_KEY, initialLocale);
+  }, [initialLocale]);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
