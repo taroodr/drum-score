@@ -3,25 +3,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return [
-    { lang: "nl" },
-    { lang: "id" },
-    { lang: "de" },
-    { lang: "en" },
-    { lang: "es" },
-    { lang: "fr" },
-    { lang: "it" },
-    { lang: "pl" },
-    { lang: "pt" },
-    { lang: "vi" },
-    { lang: "tr" },
-    { lang: "ru" },
-    { lang: "ar" },
-    { lang: "th" },
-    { lang: "ja" },
-    { lang: "zh" },
-    { lang: "ko" },
-  ];
+  return supportedLocales.map((lang) => ({ lang }));
 }
 
 const content = {
@@ -63,3 +45,4 @@ export default async function ContactPage({ params }: PageProps) {
     </main>
   );
 }
+import { supportedLocales } from "@/lib/locales";

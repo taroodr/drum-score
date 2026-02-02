@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { supportedLocales, type SupportedLocale } from "@/lib/locales";
 
 const buildMetadata = (lang: "en" | "ja"): Metadata => {
   if (lang === "ja") {
@@ -70,26 +71,6 @@ const buildMetadata = (lang: "en" | "ja"): Metadata => {
   };
 };
 
-const supportedLocales = [
-  "nl",
-  "id",
-  "de",
-  "en",
-  "es",
-  "fr",
-  "it",
-  "pl",
-  "pt",
-  "vi",
-  "tr",
-  "ru",
-  "ar",
-  "th",
-  "ja",
-  "zh",
-  "ko",
-] as const;
-
 export async function generateMetadata({
   params,
 }: {
@@ -97,7 +78,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolved = await params;
   const lang = resolved.lang === "ja" ? "ja" : "en";
-  return buildMetadata(lang);
+  const canonical = `/${resolved.lang}`;
+  return {
+    ...buildMetadata(lang),
+    alternates: {
+      canonical,
+      languages: Object.fromEntries(
+        supportedLocales.map((code) => [code, `/${code}`])
+      ),
+    },
+  };
 }
 
 export default async function LangLayout({
@@ -108,8 +98,37 @@ export default async function LangLayout({
   children: React.ReactNode;
 }) {
   const resolved = await params;
-  const lang = supportedLocales.includes(resolved.lang as (typeof supportedLocales)[number])
-    ? (resolved.lang as (typeof supportedLocales)[number])
-    : "en";
-  return <LanguageProvider initialLocale={lang}>{children}</LanguageProvider>;
+  const lang = (supportedLocales.includes(resolved.lang as SupportedLocale)
+    ? (resolved.lang as SupportedLocale)
+    : "en") as SupportedLocale;
+  const appJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Drum Score Lab",
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    url: `https://drum-score.pages.dev/${lang}`,
+  };
+  const webAppJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "Drum Score Lab",
+    applicationCategory: "MusicApplication",
+    operatingSystem: "Web",
+    url: `https://drum-score.pages.dev/${lang}`,
+  };
+  return (
+    <LanguageProvider initialLocale={lang}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
+      />
+      {children}
+    </LanguageProvider>
+  );
 }
