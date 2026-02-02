@@ -693,7 +693,7 @@ h1 {
     grid-template-columns: 1fr;
   }
 
-  .staff-wrap {
+  .staff-body {
     grid-template-columns: 120px minmax(0, 1fr);
   }
 
@@ -711,7 +711,7 @@ h1 {
     padding: 20px;
   }
 
-  .staff-wrap {
+  .staff-body {
     grid-template-columns: 100px minmax(0, 1fr);
   }
 
