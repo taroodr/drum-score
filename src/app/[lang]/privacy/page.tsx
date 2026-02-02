@@ -109,9 +109,11 @@ const content = {
 
 export default async function PrivacyPage({ params }: PageProps) {
   const resolved = await params;
+  const lang = resolved.lang === "ja" ? "ja" : "en";
   const copy = content[resolved.lang === "ja" ? "ja" : "en"];
   return (
     <main className="legal-page">
+      <link rel="canonical" href={`https://drum-score.pages.dev/${lang}/privacy`} />
       <h1>{copy.title}</h1>
       <p className="legal-updated">{copy.updated}</p>
       <p className="legal-intro">{copy.intro}</p>
