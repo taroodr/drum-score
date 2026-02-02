@@ -651,11 +651,12 @@ export default function DrumGrid() {
   );
 
   return (
-    <section
-      id="editor"
-      className="grid-shell"
-      aria-label="Drum staff editor"
-    >
+    <div className="page">
+      <section
+        id="editor"
+        className="grid-shell"
+        aria-label="Drum staff editor"
+      >
       <header className="grid-header">
         <div>
           <p className="eyebrow">{t("hero.eyebrow")}</p>
@@ -998,6 +999,12 @@ export default function DrumGrid() {
         </div>
         <OsmdViewer musicXml={musicXml} />
       </div>
-    </section>
+        <footer className="site-footer">
+          <a href={`/${locale}/privacy`}>{t("footer.privacy")}</a>
+          <span className="footer-sep">·</span>
+          <a href={`/${locale}/contact`}>{t("footer.contact")}</a>
+        </footer>
+      </section>
+    </div>
   );
 }
