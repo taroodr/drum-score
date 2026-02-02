@@ -1003,6 +1003,8 @@ export default function DrumGrid() {
           <a href={`/${locale}/privacy`}>{t("footer.privacy")}</a>
           <span className="footer-sep">·</span>
           <a href={`/${locale}/contact`}>{t("footer.contact")}</a>
+          <span className="footer-sep">·</span>
+          <span>© 2026 Drum Score Lab</span>
         </footer>
       </section>
     </div>
