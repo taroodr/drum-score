@@ -11,15 +11,17 @@ type MusicXmlInput = {
 };
 
 const rowPitchMap: Pitch[] = [
-  { step: "F", octave: 5 }, // line 5 (Crash)
-  { step: "E", octave: 5 }, // space (Ride)
-  { step: "D", octave: 5 }, // line 4 (Hi-Hat)
-  { step: "C", octave: 5 }, // space (Tom 1)
-  { step: "B", octave: 4 }, // line 3 (Tom 2)
-  { step: "A", octave: 4 }, // space (Tom 3)
-  { step: "G", octave: 4 }, // line 2 (Snare)
-  { step: "F", octave: 4 }, // space (unused)
-  { step: "E", octave: 4 }, // line 1 (Kick)
+  { step: "G", octave: 5 }, // above line 5
+  { step: "F", octave: 5 }, // line 5
+  { step: "E", octave: 5 }, // space 4
+  { step: "D", octave: 5 }, // line 4
+  { step: "C", octave: 5 }, // space 3
+  { step: "B", octave: 4 }, // line 3
+  { step: "A", octave: 4 }, // space 2
+  { step: "G", octave: 4 }, // line 2
+  { step: "F", octave: 4 }, // space 1
+  { step: "E", octave: 4 }, // line 1
+  { step: "D", octave: 4 }, // below line 1
 ];
 
 const midiUnpitched: Record<string, number> = {
