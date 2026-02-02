@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import SiteFooter from "@/components/SiteFooter";
 import { supportedLocales, type SupportedLocale } from "@/lib/locales";
 
 const buildMetadata = (lang: "en" | "ja"): Metadata => {
@@ -129,6 +130,7 @@ export default async function LangLayout({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
       />
       {children}
+      <SiteFooter />
     </LanguageProvider>
   );
 }
