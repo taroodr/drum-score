@@ -12,6 +12,7 @@ import { buildMusicXml } from "@/lib/musicXml";
 import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
 import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
 import { useLanguage } from "@/components/LanguageProvider";
+import { usePathname, useRouter } from "next/navigation";
 import OsmdViewer from "@/components/OsmdViewer";
 
 const STORAGE_KEY = "drum-score:v1";
@@ -215,6 +216,8 @@ export default function DrumGrid() {
   );
 
   const { locale, setLocale, t } = useLanguage();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -665,17 +668,6 @@ export default function DrumGrid() {
             <span className="cta-note">{t("hero.ctaNote")}</span>
           </div>
         </div>
-        <div className="legend">
-          {drumKit.map((instrument) => (
-            <div key={instrument.id} className="legend-item">
-              <span
-                className={`legend-head ${instrument.noteHead === "x" ? "legend-x" : "legend-dot"}`}
-                aria-hidden
-              />
-              <span>{instrument.label}</span>
-            </div>
-          ))}
-        </div>
       </header>
       <div className="ad-zone" aria-label="Advertisement">
         <span>{t("ad.label")}</span>
@@ -688,14 +680,20 @@ export default function DrumGrid() {
             <button
               type="button"
               className="ghost"
-              onClick={() => setLocale("en")}
+              onClick={() => {
+                setLocale("en");
+                if (pathname !== "/en") router.push("/en");
+              }}
             >
               {t("lang.en")}
             </button>
             <button
               type="button"
               className="ghost"
-              onClick={() => setLocale("ja")}
+              onClick={() => {
+                setLocale("ja");
+                if (pathname !== "/ja") router.push("/ja");
+              }}
             >
               {t("lang.ja")}
             </button>

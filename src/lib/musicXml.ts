@@ -36,7 +36,6 @@ const midiUnpitched: Record<string, number> = {
   snare: 38,
   "cross-stick": 37,
   kick: 36,
-  kick2: 35,
 };
 
 const durationToType = (duration: number) => {

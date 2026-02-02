@@ -57,8 +57,6 @@ export const midiToSampleKey = (midi: number): DrumSampleKey | null => {
       return "snare";
     case 36:
       return "kick";
-    case 35:
-      return "kick";
     default:
       return null;
   }

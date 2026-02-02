@@ -21,8 +21,7 @@ export const drumKit: Instrument[] = [
   { id: "snare", label: "Snare", gridRow: 7, staffRow: 4, noteHead: "filled" },
   { id: "cross-stick", label: "Cross Stick", gridRow: 8, staffRow: 4, noteHead: "x" },
   { id: "kick", label: "Kick", gridRow: 9, staffRow: 8, noteHead: "filled" },
-  { id: "kick2", label: "Kick 2", gridRow: 10, staffRow: 8, noteHead: "filled" },
-  { id: "hh-pedal", label: "HH Pedal", gridRow: 11, staffRow: 10, noteHead: "x" },
+  { id: "hh-pedal", label: "HH Pedal", gridRow: 10, staffRow: 10, noteHead: "x" },
 ];
 
 export const staffRowCount =
