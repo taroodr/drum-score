@@ -215,11 +215,32 @@ export default function DrumGrid() {
   const divisionGridRef = useRef<HTMLDivElement | null>(null);
   const staffGridRef = useRef<HTMLDivElement | null>(null);
   const isSyncingScrollRef = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const rafIdRef = useRef(0);
+  const cursorRef = useRef<HTMLDivElement | null>(null);
+  const tickToPixelXRef = useRef<(tick: number) => number>(() => 0);
 
   const getSubdivisionsForBeat = useCallback(
     (globalBeatIndex: number) => subdivisionsByBeat[globalBeatIndex] ?? 4,
     [subdivisionsByBeat]
   );
+
+  useEffect(() => {
+    tickToPixelXRef.current = (tick: number) => {
+      const totalBeats = subdivisionsByBeat.length;
+      const beatIndex = Math.floor(tick / ticksPerBeat);
+      const tickInBeat = tick - beatIndex * ticksPerBeat;
+      let pixelX = 0;
+      for (let i = 0; i < Math.min(beatIndex, totalBeats); i++) {
+        pixelX += (subdivisionsByBeat[i] ?? 4) * cellSize;
+      }
+      if (beatIndex < totalBeats) {
+        const subs = subdivisionsByBeat[beatIndex] ?? 4;
+        pixelX += (tickInBeat / ticksPerBeat) * subs * cellSize;
+      }
+      return pixelX;
+    };
+  }, [cellSize, subdivisionsByBeat]);
 
   const { locale, t } = useLanguage();
 
@@ -279,6 +300,12 @@ export default function DrumGrid() {
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(rafIdRef.current);
+    };
   }, []);
 
   const toggleNote = useCallback(
@@ -556,7 +583,54 @@ export default function DrumGrid() {
     }
   };
 
-  const stopPlayback = () => {
+  const stopCursorAnimation = useCallback(() => {
+    cancelAnimationFrame(rafIdRef.current);
+    rafIdRef.current = 0;
+    if (cursorRef.current) {
+      cursorRef.current.style.display = "none";
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const startCursorAnimation = useCallback(
+    (
+      context: AudioContext,
+      startAt: number,
+      totalTicks: number,
+      secondsPerTick: number
+    ) => {
+      setIsPlaying(true);
+      if (cursorRef.current) {
+        cursorRef.current.style.display = "block";
+        cursorRef.current.style.transform = "translateX(0px)";
+      }
+      const animate = () => {
+        const elapsed = context.currentTime - startAt;
+        const currentTick = elapsed / secondsPerTick;
+        if (currentTick >= totalTicks) {
+          stopCursorAnimation();
+          return;
+        }
+        const pixelX = tickToPixelXRef.current(currentTick);
+        if (cursorRef.current) {
+          cursorRef.current.style.transform = `translateX(${pixelX}px)`;
+        }
+        if (staffGridRef.current) {
+          const scrollLeft = staffGridRef.current.scrollLeft;
+          const viewWidth = staffGridRef.current.clientWidth;
+          if (pixelX > scrollLeft + viewWidth - 20 || pixelX < scrollLeft) {
+            staffGridRef.current.scrollLeft = pixelX - 20;
+          }
+        }
+        rafIdRef.current = requestAnimationFrame(animate);
+      };
+      rafIdRef.current = requestAnimationFrame(animate);
+    },
+    [stopCursorAnimation]
+  );
+
+  const stopPlayback = useCallback(() => {
+    stopCursorAnimation();
     playbackSourcesRef.current.forEach((source) => {
       try {
         source.stop();
@@ -568,7 +642,7 @@ export default function DrumGrid() {
     playbackTimeoutsRef.current.forEach((timer) => window.clearTimeout(timer));
     playbackTimeoutsRef.current = [];
     setExportStatus(null);
-  };
+  }, [stopCursorAnimation]);
 
   const handleDivisionScroll = useCallback(() => {
     if (!divisionGridRef.current || !staffGridRef.current) return;
@@ -634,6 +708,10 @@ export default function DrumGrid() {
         playbackSourcesRef.current.push(source);
       });
 
+      const totalGridTicks = measures * beatsPerMeasure * ticksPerBeat;
+      const secondsPerGridTick = secondsPerQuarter / ticksPerBeat;
+      startCursorAnimation(context, startAt, totalGridTicks, secondsPerGridTick);
+
       const lastEnd = Math.max(
         ...notes.map(
           (note) => startAt + (note.startTick + note.duration) * secondsPerTick
@@ -641,6 +719,7 @@ export default function DrumGrid() {
       );
       setExportStatus({ key: "status.playing" });
       const timer = window.setTimeout(() => {
+        stopCursorAnimation();
         setExportStatus({ key: "status.playing.finished" });
         playbackSourcesRef.current = [];
         playbackTimeoutsRef.current = playbackTimeoutsRef.current.filter(
@@ -855,7 +934,7 @@ export default function DrumGrid() {
                         type="button"
                         className={`division-beat ${
                           beatIndex === 0 ? "measure-start" : ""
-                        }`}
+                        } ${beatIndex % 2 === 0 ? "beat-even" : "beat-odd"}`}
                         style={{
                         gridTemplateColumns: `repeat(${subdivisions}, var(--cell-size))`,
                         }}
@@ -888,7 +967,12 @@ export default function DrumGrid() {
                 key={`label-${row}`}
                 className={`label-row ${isLine ? "line-row" : ""}`}
               >
-                <span>{instrument ? instrument.label : ""}</span>
+                {instrument ? (
+                  <>
+                    <span className="label-full">{instrument.label}</span>
+                    <span className="label-short">{instrument.shortLabel}</span>
+                  </>
+                ) : null}
               </div>
             );
           })}
@@ -946,7 +1030,7 @@ export default function DrumGrid() {
                                     type="button"
                                     className={`cell ${
                                       active ? "active" : ""
-                                    } ${isBeatStart ? "beat-start" : ""}`}
+                                    } ${isBeatStart ? "beat-start" : ""} ${beatIndex % 2 === 0 ? "beat-even" : "beat-odd"}`}
                                     onClick={() =>
                                       instrument &&
                                       toggleNote(
@@ -984,6 +1068,7 @@ export default function DrumGrid() {
               </div>
             );
           })}
+          <div ref={cursorRef} className="playback-cursor" style={{ display: "none" }} />
         </div>
         </div>
       </div>

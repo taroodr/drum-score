@@ -554,7 +554,7 @@ h1 {
 }
 
 .division-beat.measure-start {
-  box-shadow: inset 2px 0 0 #4a515b;
+  box-shadow: inset 3px 0 0 #8b94a4;
 }
 
 .division-beat:focus-visible {
@@ -606,6 +606,14 @@ h1 {
   position: relative;
 }
 
+.label-full {
+  display: inline;
+}
+
+.label-short {
+  display: none;
+}
+
 
 .staff-grid {
   display: grid;
@@ -613,6 +621,20 @@ h1 {
   overflow-x: auto;
   background: #1f242b;
   align-items: start;
+  position: relative;
+}
+
+.playback-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 100%;
+  background: #ff6b6b;
+  z-index: 10;
+  pointer-events: none;
+  will-change: transform;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.5);
 }
 
 .staff-row {
@@ -632,7 +654,7 @@ h1 {
 }
 
 .staff-beat.measure-start {
-  box-shadow: inset 2px 0 0 #6b7482;
+  box-shadow: inset 3px 0 0 #8b94a4;
 }
 
 
@@ -652,6 +674,14 @@ h1 {
   place-items: center;
   position: relative;
   cursor: pointer;
+}
+
+.cell.beat-even {
+  background: #222831;
+}
+
+.cell.beat-odd {
+  background: #262d37;
 }
 
 .cell:disabled {
@@ -779,5 +809,13 @@ h1 {
 
   .toolbar {
     flex-wrap: wrap;
+  }
+
+  .label-full {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
   }
 }
