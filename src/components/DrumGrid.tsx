@@ -212,6 +212,9 @@ export default function DrumGrid() {
   );
   const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const playbackTimeoutsRef = useRef<number[]>([]);
+  const divisionGridRef = useRef<HTMLDivElement | null>(null);
+  const staffGridRef = useRef<HTMLDivElement | null>(null);
+  const isSyncingScrollRef = useRef(false);
 
   const getSubdivisionsForBeat = useCallback(
     (globalBeatIndex: number) => subdivisionsByBeat[globalBeatIndex] ?? 4,
@@ -567,6 +570,26 @@ export default function DrumGrid() {
     setExportStatus(null);
   };
 
+  const handleDivisionScroll = useCallback(() => {
+    if (!divisionGridRef.current || !staffGridRef.current) return;
+    if (isSyncingScrollRef.current) return;
+    isSyncingScrollRef.current = true;
+    staffGridRef.current.scrollLeft = divisionGridRef.current.scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingScrollRef.current = false;
+    });
+  }, []);
+
+  const handleStaffScroll = useCallback(() => {
+    if (!divisionGridRef.current || !staffGridRef.current) return;
+    if (isSyncingScrollRef.current) return;
+    isSyncingScrollRef.current = true;
+    divisionGridRef.current.scrollLeft = staffGridRef.current.scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingScrollRef.current = false;
+    });
+  }, []);
+
   const playMidi = async () => {
     setExportStatus({ key: "status.playing" });
     try {
@@ -809,7 +832,11 @@ export default function DrumGrid() {
           <div className="division-label">
             <span>{t("division.label")}</span>
           </div>
-          <div className="division-grid">
+          <div
+            className="division-grid"
+            ref={divisionGridRef}
+            onScroll={handleDivisionScroll}
+          >
             {Array.from({ length: measures }, (_, measureIndex) => {
               return (
                 <div
@@ -868,6 +895,8 @@ export default function DrumGrid() {
         </div>
         <div
           className="staff-grid"
+          ref={staffGridRef}
+          onScroll={handleStaffScroll}
           style={{ gridTemplateRows: `repeat(${rows.length}, var(--cell-size))` }}
         >
           {rows.map((row) => {
