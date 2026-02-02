@@ -11,6 +11,7 @@ import {
 import { buildMusicXml } from "@/lib/musicXml";
 import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
 import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
+import { useLanguage } from "@/components/LanguageProvider";
 import OsmdViewer from "@/components/OsmdViewer";
 
 const STORAGE_KEY = "drum-score:v1";
@@ -193,8 +194,12 @@ export default function DrumGrid() {
   const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
     () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<
+    { key: string; detail?: string } | null
+  >(null);
+  const [exportStatus, setExportStatus] = useState<
+    { key: string; detail?: string } | null
+  >(null);
   const osmdExportRef = useRef<HTMLDivElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleBuffersRef = useRef<Map<string, AudioBuffer> | null>(null);
@@ -209,6 +214,8 @@ export default function DrumGrid() {
     [subdivisionsByBeat]
   );
 
+  const { locale, setLocale, t } = useLanguage();
+
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -218,7 +225,7 @@ export default function DrumGrid() {
         Array.from({ length: defaultMeasures * beatsPerMeasure }, () => 4)
       );
       setNotes(createDefaultNotes(defaultMeasures));
-      setLastSavedAt("Loaded default pattern");
+      setLastSavedAt({ key: "status.loaded.default" });
       return;
     }
     try {
@@ -257,9 +264,11 @@ export default function DrumGrid() {
       setMeasures(safeMeasures);
       setSubdivisionsByBeat(safeSubdivisionsByBeat);
       setNotes(shouldSeedDefault ? createDefaultNotes(safeMeasures) : filtered);
-      setLastSavedAt(
-        shouldSeedDefault ? "Loaded default pattern" : "Loaded local score"
-      );
+      setLastSavedAt({
+        key: shouldSeedDefault
+          ? "status.loaded.default"
+          : "status.loaded.local",
+      });
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
     }
@@ -349,13 +358,16 @@ export default function DrumGrid() {
       }),
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    setLastSavedAt(new Date().toLocaleString());
+    setLastSavedAt({
+      key: "status.saved",
+      detail: new Date().toLocaleString(locale),
+    });
   };
 
   const handleLoad = () => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      setLastSavedAt("No saved score found");
+      setLastSavedAt({ key: "status.noSave" });
       return;
     }
     try {
@@ -369,7 +381,7 @@ export default function DrumGrid() {
         parsed.version !== 6 &&
         parsed.version !== 7
       ) {
-        setLastSavedAt("Unsupported save format");
+        setLastSavedAt({ key: "status.unsupported" });
         return;
       }
       const safeMeasures = clampMeasures(parsed.measures ?? 2);
@@ -393,10 +405,10 @@ export default function DrumGrid() {
       setMeasures(safeMeasures);
       setSubdivisionsByBeat(safeSubdivisionsByBeat);
       setNotes(filtered);
-      setLastSavedAt("Loaded local score");
+      setLastSavedAt({ key: "status.loaded.local" });
     } catch (error) {
       console.warn("Failed to load saved drum score", error);
-      setLastSavedAt("Failed to load save data");
+      setLastSavedAt({ key: "status.failedLoad" });
     }
   };
 
@@ -404,11 +416,14 @@ export default function DrumGrid() {
     () => Array.from({ length: staffRowCount }, (_, row) => row),
     []
   );
-  const getDivisionLabel = useCallback((value: number) => {
-    if (value === 2) return "8th";
-    if (value === 3) return "16th triplet";
-    return "16th";
-  }, []);
+  const getDivisionLabel = useCallback(
+    (value: number) => {
+      if (value === 2) return t("division.8th");
+      if (value === 3) return t("division.triplet");
+      return t("division.16th");
+    },
+    [t]
+  );
   const musicXml = useMemo(
     () =>
       buildMusicXml({
@@ -457,23 +472,23 @@ export default function DrumGrid() {
 
   const exportPng = async () => {
     if (!osmdExportRef.current) return;
-    setExportStatus("Exporting PNG...");
+    setExportStatus({ key: "status.export.png" });
     try {
       const dataUrl = await exportSvgAsPng();
       const link = document.createElement("a");
       link.download = `drum-score-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
-      setExportStatus("PNG exported");
+      setExportStatus({ key: "status.export.png.done" });
     } catch (error) {
       console.error(error);
-      setExportStatus("PNG export failed");
+      setExportStatus({ key: "status.export.png.fail" });
     }
   };
 
   const exportPdf = async () => {
     if (!osmdExportRef.current) return;
-    setExportStatus("Exporting PDF...");
+    setExportStatus({ key: "status.export.pdf" });
     try {
       const dataUrl = await exportSvgAsPng();
       const pdf = new jsPDF({
@@ -492,17 +507,17 @@ export default function DrumGrid() {
         const y = (pageHeight - height) / 2;
         pdf.addImage(img, "PNG", x, y, width, height);
         pdf.save(`drum-score-${Date.now()}.pdf`);
-        setExportStatus("PDF exported");
+        setExportStatus({ key: "status.export.pdf.done" });
       };
       img.src = dataUrl;
     } catch (error) {
       console.error(error);
-      setExportStatus("PDF export failed");
+      setExportStatus({ key: "status.export.pdf.fail" });
     }
   };
 
   const exportMidi = () => {
-    setExportStatus("Exporting MIDI...");
+    setExportStatus({ key: "status.export.midi" });
     try {
       const midiBytes = buildMidiFromMusicXml(musicXml, bpm);
       const blob = new Blob([midiBytes], { type: "audio/midi" });
@@ -512,10 +527,10 @@ export default function DrumGrid() {
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
-      setExportStatus("MIDI exported");
+      setExportStatus({ key: "status.export.midi.done" });
     } catch (error) {
       console.error(error);
-      setExportStatus("MIDI export failed");
+      setExportStatus({ key: "status.export.midi.fail" });
     }
   };
 
@@ -545,16 +560,16 @@ export default function DrumGrid() {
     playbackSourcesRef.current = [];
     playbackTimeoutsRef.current.forEach((timer) => window.clearTimeout(timer));
     playbackTimeoutsRef.current = [];
-    setExportStatus("Playback stopped");
+    setExportStatus({ key: "status.playing.stopped" });
   };
 
   const playMidi = async () => {
-    setExportStatus("Playing...");
+    setExportStatus({ key: "status.playing" });
     try {
       stopPlayback();
       const { divisions, notes } = parseMidiNotesFromMusicXml(musicXml);
       if (!notes.length) {
-        setExportStatus("No notes to play");
+        setExportStatus({ key: "status.playing.noNotes" });
         return;
       }
 
@@ -568,7 +583,7 @@ export default function DrumGrid() {
         await context.resume();
       }
 
-      setExportStatus("Loading samples...");
+      setExportStatus({ key: "status.playing.loading" });
       const buffers = await ensureSamplesLoaded(context);
 
       const startAt = context.currentTime + 0.05;
@@ -597,9 +612,9 @@ export default function DrumGrid() {
           (note) => startAt + (note.startTick + note.duration) * secondsPerTick
         )
       );
-      setExportStatus("Playing...");
+      setExportStatus({ key: "status.playing" });
       const timer = window.setTimeout(() => {
-        setExportStatus("Playback finished");
+        setExportStatus({ key: "status.playing.finished" });
         playbackSourcesRef.current = [];
         playbackTimeoutsRef.current = playbackTimeoutsRef.current.filter(
           (id) => id !== timer
@@ -608,7 +623,7 @@ export default function DrumGrid() {
       playbackTimeoutsRef.current.push(timer);
     } catch (error) {
       console.error(error);
-      setExportStatus("Playback failed");
+      setExportStatus({ key: "status.playing.failed" });
     }
   };
 
@@ -640,17 +655,14 @@ export default function DrumGrid() {
     >
       <header className="grid-header">
         <div>
-          <p className="eyebrow">無料のドラム譜作成ツール</p>
-          <h1>ドラム譜を作成・再生・書き出しできる無料エディタ</h1>
-          <p className="subtle">
-            ドラム譜作成・ドラム譜ソフトを探している方向け。クリック入力で
-            楽譜作成、PDF/MIDI書き出し、再生に対応。
-          </p>
+          <p className="eyebrow">{t("hero.eyebrow")}</p>
+          <h1>{t("hero.title")}</h1>
+          <p className="subtle">{t("hero.subtitle")}</p>
           <div className="headline-actions">
             <a className="cta" href="#editor">
-              今すぐ打ち込み
+              {t("hero.cta")}
             </a>
-            <span className="cta-note">登録不要・無料</span>
+            <span className="cta-note">{t("hero.ctaNote")}</span>
           </div>
         </div>
         <div className="legend">
@@ -666,27 +678,58 @@ export default function DrumGrid() {
         </div>
       </header>
       <div className="ad-zone" aria-label="Advertisement">
-        <span>Ad Space (Auto ads)</span>
+        <span>{t("ad.label")}</span>
       </div>
 
       <div className="controls">
         <div className="control-block">
-          <label>Samples</label>
+          <label>Language</label>
           <div className="button-row">
-            <button type="button" className="ghost" onClick={() => applySample("rock")}>
-              Rock 8beat
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setLocale("en")}
+            >
+              {t("lang.en")}
             </button>
-            <button type="button" className="ghost" onClick={() => applySample("pop")}>
-              Pop 8beat
-            </button>
-            <button type="button" className="ghost" onClick={() => applySample("shuffle")}>
-              Shuffle
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setLocale("ja")}
+            >
+              {t("lang.ja")}
             </button>
           </div>
-          <span className="helper">ワンクリックで譜面を読み込み</span>
         </div>
         <div className="control-block">
-          <label htmlFor="measure-input">Measures</label>
+          <label>{t("controls.samples")}</label>
+          <div className="button-row">
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => applySample("rock")}
+            >
+              {t("controls.samples.rock")}
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => applySample("pop")}
+            >
+              {t("controls.samples.pop")}
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => applySample("shuffle")}
+            >
+              {t("controls.samples.shuffle")}
+            </button>
+          </div>
+          <span className="helper">{t("controls.samples.helper")}</span>
+        </div>
+        <div className="control-block">
+          <label htmlFor="measure-input">{t("controls.measures")}</label>
           <div className="measure-input">
             <input
               id="measure-input"
@@ -698,11 +741,13 @@ export default function DrumGrid() {
                 handleMeasureChange(Number(event.target.value))
               }
             />
-            <span className="measure-caption">1-32</span>
+            <span className="measure-caption">
+              {t("controls.measures.range")}
+            </span>
           </div>
         </div>
         <div className="control-block">
-          <label htmlFor="bpm-input">BPM</label>
+          <label htmlFor="bpm-input">{t("controls.bpm")}</label>
           <div className="measure-input">
             <input
               id="bpm-input"
@@ -716,62 +761,73 @@ export default function DrumGrid() {
                 setBpm(Math.min(240, Math.max(40, next)));
               }}
             />
-            <span className="measure-caption">40-240</span>
+            <span className="measure-caption">
+              {t("controls.bpm.range")}
+            </span>
           </div>
         </div>
         <div className="control-block">
-          <label>Storage</label>
+          <label>{t("controls.storage")}</label>
           <div className="button-row">
             <button type="button" onClick={handleSave}>
-              Save
+              {t("controls.storage.save")}
             </button>
             <button type="button" onClick={handleLoad} className="ghost">
-              Load
+              {t("controls.storage.load")}
             </button>
             <button type="button" onClick={handleClear} className="ghost">
-              Clear
+              {t("controls.storage.clear")}
             </button>
           </div>
           <span className="helper">
-            {lastSavedAt ? `Status: ${lastSavedAt}` : ""}
+            {lastSavedAt
+              ? `${t("status.prefix")} ${t(lastSavedAt.key, lastSavedAt.detail ? { value: lastSavedAt.detail } : undefined)}`
+              : ""}
           </span>
         </div>
         <div className="control-block">
-          <label>Export</label>
+          <label>{t("controls.export")}</label>
           <div className="button-row">
             <button type="button" className="ghost" onClick={exportPdf}>
-              PDF
+              {t("controls.export.pdf")}
             </button>
             <button type="button" className="ghost" onClick={exportPng}>
-              Image
+              {t("controls.export.image")}
             </button>
             <button type="button" className="ghost" onClick={exportMidi}>
-              MIDI
+              {t("controls.export.midi")}
             </button>
           </div>
           <span className="helper">
-            {exportStatus ? exportStatus : "OSMDプレビューを書き出します"}
+            {exportStatus
+              ? t(
+                  exportStatus.key,
+                  exportStatus.detail
+                    ? { value: exportStatus.detail }
+                    : undefined
+                )
+              : t("controls.export.helper")}
           </span>
         </div>
         <div className="control-block">
-          <label>Playback</label>
+          <label>{t("controls.playback")}</label>
           <div className="button-row">
             <button type="button" className="ghost" onClick={playMidi}>
-              Play
+              {t("controls.playback.play")}
             </button>
             <button type="button" className="ghost" onClick={stopPlayback}>
-              Stop
+              {t("controls.playback.stop")}
             </button>
           </div>
           <span className="helper">
-            Drum samples: @teropa/drumkit (Freesound CC BY/CC0)
+            {t("controls.playback.helper")}
           </span>
         </div>
       </div>
 
       <div className="grid-division" aria-label="Division grid header">
         <div className="division-label">
-          <span>Division</span>
+          <span>{t("division.label")}</span>
         </div>
         <div className="division-grid">
           {Array.from({ length: measures }, (_, measureIndex) => {
@@ -935,15 +991,12 @@ export default function DrumGrid() {
         </div>
       </div>
       <div className="ad-zone" aria-label="Advertisement">
-        <span>Ad Space (Auto ads)</span>
+        <span>{t("ad.label")}</span>
       </div>
 
       <div className="osmd-panel" ref={osmdExportRef}>
         <div className="osmd-header">
-          <h2>Notation Preview (OpenSheetMusicDisplay)</h2>
-          <p className="subtle">
-            OSMD で MusicXML をレンダリングした譜面プレビュー。
-          </p>
+          <h2>Notation Preview</h2>
         </div>
         <OsmdViewer musicXml={musicXml} />
       </div>

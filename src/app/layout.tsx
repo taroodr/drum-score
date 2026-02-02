@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,6 +46,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <LanguageProvider>
         <Script
           id="gtag-src"
           strategy="afterInteractive"
@@ -66,6 +68,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         {children}
+        </LanguageProvider>
       </body>
     </html>
   );
