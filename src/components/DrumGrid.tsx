@@ -738,18 +738,15 @@ export default function DrumGrid() {
             <input
               id="bpm-input"
               type="number"
-              min={40}
-              max={240}
+              min={30}
+              max={400}
               value={bpm}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 if (Number.isNaN(next)) return;
-                setBpm(Math.min(240, Math.max(40, next)));
+                setBpm(Math.min(400, Math.max(30, next)));
               }}
             />
-            <span className="measure-caption">
-              {t("controls.bpm.range")}
-            </span>
           </div>
         </div>
         <div className="toolbar-group">
