@@ -796,62 +796,50 @@ export default function DrumGrid() {
         </div>
       </div>
 
-      <div className="grid-division" aria-label="Division grid header">
-        <div className="division-label">
-          <span>{t("division.label")}</span>
-        </div>
-        <div className="division-grid">
-          {Array.from({ length: measures }, (_, measureIndex) => {
-            return (
-              <div
-                key={`division-measure-${measureIndex}`}
-                className="division-measure"
-              >
-                {Array.from({ length: beatsPerMeasure }, (_, beatIndex) => {
-                  const globalBeatIndex =
-                    measureIndex * beatsPerMeasure + beatIndex;
-                  const subdivisions =
-                    getSubdivisionsForBeat(globalBeatIndex);
-                  const divisionLabel = getDivisionLabel(subdivisions);
-                  return (
-                    <button
-                      key={`division-beat-${measureIndex}-${beatIndex}`}
-                      type="button"
-                      className={`division-beat ${
-                        beatIndex === 0 ? "measure-start" : ""
-                      }`}
-                      style={{
-                        gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
-                      }}
-                      onClick={() => handleBeatDivisionToggle(globalBeatIndex)}
-                    >
-                      {Array.from(
-                        { length: subdivisions },
-                        (_, colInBeat) => {
-                          const isBeatStart = colInBeat === 0;
-                          const label = `${colInBeat + 1} ${divisionLabel}`;
-                          return (
-                            <span
-                              key={`division-${measureIndex}-${beatIndex}-${colInBeat}`}
-                              className={`division-cell ${
-                                isBeatStart ? "beat-start" : ""
-                              }`}
-                            >
-                              {label}
-                            </span>
-                          );
-                        }
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="staff-wrap" role="grid" aria-label="Drum staff grid">
+        <div className="grid-division" aria-label="Division grid header">
+          <div className="division-label">
+            <span>{t("division.label")}</span>
+          </div>
+          <div className="division-grid">
+            {Array.from({ length: measures }, (_, measureIndex) => {
+              return (
+                <div
+                  key={`division-measure-${measureIndex}`}
+                  className="division-measure"
+                >
+                  {Array.from({ length: beatsPerMeasure }, (_, beatIndex) => {
+                    const globalBeatIndex =
+                      measureIndex * beatsPerMeasure + beatIndex;
+                    const subdivisions =
+                      getSubdivisionsForBeat(globalBeatIndex);
+                    const divisionLabel = getDivisionLabel(subdivisions);
+                    return (
+                      <button
+                        key={`division-beat-${measureIndex}-${beatIndex}`}
+                        type="button"
+                        className={`division-beat ${
+                          beatIndex === 0 ? "measure-start" : ""
+                        }`}
+                        style={{
+                          gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
+                        }}
+                        onClick={() =>
+                          handleBeatDivisionToggle(globalBeatIndex)
+                        }
+                      >
+                        <span className="division-label-single">
+                          {divisionLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="staff-body">
         <div
           className="staff-labels"
           aria-hidden
@@ -959,6 +947,7 @@ export default function DrumGrid() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
       <div className="ad-zone" aria-label="Advertisement">
