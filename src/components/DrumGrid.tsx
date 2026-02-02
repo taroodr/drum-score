@@ -214,7 +214,7 @@ export default function DrumGrid() {
     [subdivisionsByBeat]
   );
 
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
