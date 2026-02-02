@@ -191,6 +191,10 @@ export default function DrumGrid() {
   const [measures, setMeasures] = useState(2);
   const [notes, setNotes] = useState<Map<string, number>>(() => new Map());
   const [bpm, setBpm] = useState(defaultBpm);
+  const [cellSize, setCellSize] = useState(24);
+  const [samplePreset, setSamplePreset] = useState<
+    "rock" | "pop" | "shuffle" | ""
+  >("rock");
   const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
     () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
@@ -560,7 +564,7 @@ export default function DrumGrid() {
     playbackSourcesRef.current = [];
     playbackTimeoutsRef.current.forEach((timer) => window.clearTimeout(timer));
     playbackTimeoutsRef.current = [];
-    setExportStatus({ key: "status.playing.stopped" });
+    setExportStatus(null);
   };
 
   const playMidi = async () => {
@@ -673,51 +677,62 @@ export default function DrumGrid() {
 
       <div className="controls">
         <div className="control-block">
-          <label>{t("controls.samples")}</label>
+          <label>{t("controls.storage")}</label>
           <div className="button-row">
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => applySample("rock")}
-            >
-              {t("controls.samples.rock")}
+            <button type="button" onClick={handleSave}>
+              {t("controls.storage.save")}
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => applySample("pop")}
-            >
-              {t("controls.samples.pop")}
+            <button type="button" onClick={handleLoad} className="ghost">
+              {t("controls.storage.load")}
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => applySample("shuffle")}
-            >
-              {t("controls.samples.shuffle")}
+            <button type="button" onClick={handleClear} className="ghost">
+              {t("controls.storage.clear")}
             </button>
           </div>
-          <span className="helper">{t("controls.samples.helper")}</span>
+          <span className="helper">
+            {lastSavedAt
+              ? `${t("status.prefix")} ${t(lastSavedAt.key, lastSavedAt.detail ? { value: lastSavedAt.detail } : undefined)}`
+              : ""}
+          </span>
         </div>
-        <div className="control-block">
-          <label htmlFor="measure-input">{t("controls.measures")}</label>
+      </div>
+
+      <div className="toolbar">
+        <div className="toolbar-group">
+          <label htmlFor="samples-select">{t("controls.samples")}</label>
           <div className="measure-input">
-            <input
-              id="measure-input"
-              type="number"
-              min={1}
-              max={32}
-              value={measures}
-              onChange={(event) =>
-                handleMeasureChange(Number(event.target.value))
-              }
-            />
-            <span className="measure-caption">
-              {t("controls.measures.range")}
-            </span>
+            <select
+              id="samples-select"
+              value={samplePreset}
+              onChange={(event) => {
+                const value = event.target.value as
+                  | "rock"
+                  | "pop"
+                  | "shuffle"
+                  | "";
+                if (!value) return;
+                applySample(value);
+                setSamplePreset(value);
+              }}
+            >
+              <option value="">{t("controls.samples.helper")}</option>
+              <option value="rock">{t("controls.samples.rock")}</option>
+              <option value="pop">{t("controls.samples.pop")}</option>
+              <option value="shuffle">{t("controls.samples.shuffle")}</option>
+            </select>
           </div>
         </div>
-        <div className="control-block">
+        <div className="toolbar-group">
+          <div className="button-row">
+            <button type="button" className="ghost" onClick={playMidi}>
+              {t("controls.playback.play")}
+            </button>
+            <button type="button" className="ghost" onClick={stopPlayback}>
+              {t("controls.playback.stop")}
+            </button>
+          </div>
+        </div>
+        <div className="toolbar-group">
           <label htmlFor="bpm-input">{t("controls.bpm")}</label>
           <div className="measure-input">
             <input
@@ -737,26 +752,41 @@ export default function DrumGrid() {
             </span>
           </div>
         </div>
-        <div className="control-block">
-          <label>{t("controls.storage")}</label>
-          <div className="button-row">
-            <button type="button" onClick={handleSave}>
-              {t("controls.storage.save")}
-            </button>
-            <button type="button" onClick={handleLoad} className="ghost">
-              {t("controls.storage.load")}
-            </button>
-            <button type="button" onClick={handleClear} className="ghost">
-              {t("controls.storage.clear")}
-            </button>
+        <div className="toolbar-group">
+          <label htmlFor="zoom-input">Zoom</label>
+          <div className="measure-input">
+            <select
+              id="zoom-input"
+              value={cellSize}
+              onChange={(event) => setCellSize(Number(event.target.value))}
+            >
+              <option value={18}>80%</option>
+              <option value={22}>90%</option>
+              <option value={24}>100%</option>
+              <option value={28}>115%</option>
+              <option value={32}>130%</option>
+            </select>
           </div>
-          <span className="helper">
-            {lastSavedAt
-              ? `${t("status.prefix")} ${t(lastSavedAt.key, lastSavedAt.detail ? { value: lastSavedAt.detail } : undefined)}`
-              : ""}
-          </span>
         </div>
-        <div className="control-block">
+        <div className="toolbar-group">
+          <label htmlFor="measure-input">{t("controls.measures")}</label>
+          <div className="measure-input">
+            <input
+              id="measure-input"
+              type="number"
+              min={1}
+              max={32}
+              value={measures}
+              onChange={(event) =>
+                handleMeasureChange(Number(event.target.value))
+              }
+            />
+            <span className="measure-caption">
+              {t("controls.measures.range")}
+            </span>
+          </div>
+        </div>
+        <div className="toolbar-group">
           <label>{t("controls.export")}</label>
           <div className="button-row">
             <button type="button" className="ghost" onClick={exportPdf}>
@@ -769,34 +799,15 @@ export default function DrumGrid() {
               {t("controls.export.midi")}
             </button>
           </div>
-          <span className="helper">
-            {exportStatus
-              ? t(
-                  exportStatus.key,
-                  exportStatus.detail
-                    ? { value: exportStatus.detail }
-                    : undefined
-                )
-              : t("controls.export.helper")}
-          </span>
-        </div>
-        <div className="control-block">
-          <label>{t("controls.playback")}</label>
-          <div className="button-row">
-            <button type="button" className="ghost" onClick={playMidi}>
-              {t("controls.playback.play")}
-            </button>
-            <button type="button" className="ghost" onClick={stopPlayback}>
-              {t("controls.playback.stop")}
-            </button>
-          </div>
-          <span className="helper">
-            {t("controls.playback.helper")}
-          </span>
         </div>
       </div>
 
-      <div className="staff-wrap" role="grid" aria-label="Drum staff grid">
+      <div
+        className="staff-wrap"
+        role="grid"
+        aria-label="Drum staff grid"
+        style={{ ["--cell-size" as string]: `${cellSize}px` }}
+      >
         <div className="grid-division" aria-label="Division grid header">
           <div className="division-label">
             <span>{t("division.label")}</span>
@@ -822,7 +833,7 @@ export default function DrumGrid() {
                           beatIndex === 0 ? "measure-start" : ""
                         }`}
                         style={{
-                          gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
+                        gridTemplateColumns: `repeat(${subdivisions}, var(--cell-size))`,
                         }}
                         onClick={() =>
                           handleBeatDivisionToggle(globalBeatIndex)
@@ -843,7 +854,7 @@ export default function DrumGrid() {
         <div
           className="staff-labels"
           aria-hidden
-          style={{ gridTemplateRows: `repeat(${rows.length}, 24px)` }}
+          style={{ gridTemplateRows: `repeat(${rows.length}, var(--cell-size))` }}
         >
           {rows.map((row) => {
             const instrument = instrumentByRow.get(row);
@@ -860,7 +871,7 @@ export default function DrumGrid() {
         </div>
         <div
           className="staff-grid"
-          style={{ gridTemplateRows: `repeat(${rows.length}, 24px)` }}
+          style={{ gridTemplateRows: `repeat(${rows.length}, var(--cell-size))` }}
         >
           {rows.map((row) => {
             const instrument = instrumentByRow.get(row);
@@ -888,7 +899,7 @@ export default function DrumGrid() {
                               beatIndex === 0 ? "measure-start" : ""
                             }`}
                             style={{
-                              gridTemplateColumns: `repeat(${subdivisions}, 24px)`,
+                              gridTemplateColumns: `repeat(${subdivisions}, var(--cell-size))`,
                             }}
                           >
                             {Array.from(
