@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Drum Notation Editor | Free Drum Score Builder - Drum Score Lab",
   description:
     "Create drum notation for free. Click to input, play back, and export to PDF or MIDI.",
+  metadataBase: new URL("https://drum-score.pages.dev"),
   openGraph: {
     title: "Drum Notation Editor | Free Drum Score Builder - Drum Score Lab",
     description:
@@ -46,7 +46,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <LanguageProvider>
         <Script
           id="gtag-src"
           strategy="afterInteractive"
@@ -68,7 +67,6 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         {children}
-        </LanguageProvider>
       </body>
     </html>
   );
