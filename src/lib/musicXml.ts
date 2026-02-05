@@ -2,11 +2,18 @@ import { drumKit } from "@/lib/drumKit";
 
 type Pitch = { step: string; octave: number };
 
+export type NoteType = "normal" | "ghost" | "accent" | "flam";
+
+export type NoteData = {
+  duration: number;
+  type: NoteType;
+};
+
 type MusicXmlInput = {
   measures: number;
   beatsPerMeasure: number;
   ticksPerBeat: number;
-  notes: Map<string, number>;
+  notes: Map<string, NoteData>;
   subdivisionsByBeat?: number[];
 };
 
@@ -365,15 +372,31 @@ export const buildMusicXml = ({
           );
         } else {
           activeInstruments.forEach((instrument, chordIndex) => {
+            const noteKey = makeKey(instrument.gridRow, absoluteTick);
+            const noteData = notes.get(noteKey);
             const pitch = rowPitchMap[instrument.staffRow] ?? rowPitchMap[4];
             const instrumentId = `P1-${instrument.id}`;
-            const noteHead =
-              instrument.noteHead === "x" ? "<notehead>x</notehead>" : "";
+            const isFlam = noteData?.type === "flam";
+            const isGhost = noteData?.type === "ghost";
+
+            // Notehead with parentheses for ghost notes
+            let noteHead = "";
+            if (instrument.noteHead === "x") {
+              noteHead = isGhost
+                ? '<notehead parentheses="yes">x</notehead>'
+                : "<notehead>x</notehead>";
+            } else if (isGhost) {
+              noteHead = '<notehead parentheses="yes">normal</notehead>';
+            }
+
             const noteType = durationToType(rawDuration);
             const timeModification = durationToTimeModification(rawDuration);
             const dot = durationToDot(rawDuration);
+            const graceTag = isFlam ? "<grace/>" : "";
+            const durationTag = isFlam ? "" : `<duration>${rawDuration}</duration>`;
+
             const beamParts: string[] = [];
-            if (chordIndex === 0) {
+            if (chordIndex === 0 && !isFlam) {
               if (beam1States[index] !== "") {
                 beamParts.push(
                   `<beam number="1">${beam1States[index]}</beam>`
@@ -386,16 +409,38 @@ export const buildMusicXml = ({
               }
             }
             const beamTag = beamParts.join("");
-            const notationTag = buildTupletNotation(absoluteTick, rawDuration);
+
+            // Build notations tag with tuplet and articulations
+            const tupletNotation = isFlam ? "" : buildTupletNotation(absoluteTick, rawDuration);
+            const notationParts: string[] = [];
+
+            // Extract tuplet content if exists
+            if (tupletNotation) {
+              const tupletMatch = tupletNotation.match(/<notations>(.*?)<\/notations>/);
+              if (tupletMatch) {
+                notationParts.push(tupletMatch[1]);
+              }
+            }
+
+            // Add accent articulation
+            if (noteData?.type === "accent") {
+              notationParts.push("<articulations><accent/></articulations>");
+            }
+
+            const notationTag = notationParts.length > 0
+              ? `<notations>${notationParts.join("")}</notations>`
+              : "";
+
             const chordTag = chordIndex > 0 ? "<chord/>" : "";
             notesXml.push(`
         <note>
           ${chordTag}
+          ${graceTag}
           <unpitched>
             <display-step>${pitch.step}</display-step>
             <display-octave>${pitch.octave}</display-octave>
           </unpitched>
-          <duration>${rawDuration}</duration>
+          ${durationTag}
           <instrument id="${instrumentId}" />
           <voice>1</voice>
           <type>${noteType}</type>

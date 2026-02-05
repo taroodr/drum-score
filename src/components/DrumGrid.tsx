@@ -12,7 +12,7 @@ import { buildMusicXml } from "@/lib/musicXml";
 import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
 import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
 import { useLanguage } from "@/components/LanguageProvider";
-import OsmdViewer from "@/components/OsmdViewer";
+import VerovioViewer from "@/components/VerovioViewer";
 
 const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
@@ -24,12 +24,19 @@ const divisionOptions = [
   { value: 3, label: "16th triplet" },
 ] as const;
 
+export type NoteType = "normal" | "ghost" | "accent" | "flam";
+
+type NoteData = {
+  duration: number;
+  type: NoteType;
+};
+
 type SavedGrid = {
-  version: 7 | 6 | 5 | 4 | 3 | 2 | 1;
+  version: 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1;
   measures: number;
   beatsPerMeasure: number;
   subdivisions: number;
-  notes: string[] | { row: number; tick: number; duration: number }[];
+  notes: string[] | { row: number; tick: number; duration: number; type?: NoteType }[];
   subdivisionsPerMeasure?: number[];
   subdivisionsPerBeat?: number[];
   tripletBeats?: string[];
@@ -61,7 +68,7 @@ const getRowByInstrumentId = (id: string) =>
 
 const createDefaultNotes = (measures: number) => {
   const totalBeats = measures * beatsPerMeasure;
-  const map = new Map<string, number>();
+  const map = new Map<string, NoteData>();
   const hihatRow = getRowByInstrumentId("hihat");
   const snareRow = getRowByInstrumentId("snare");
   const kickRow = getRowByInstrumentId("kick");
@@ -69,14 +76,14 @@ const createDefaultNotes = (measures: number) => {
 
   for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
     const beatStartTick = beatIndex * ticksPerBeat;
-    map.set(makeKey(hihatRow, beatStartTick), eighth);
-    map.set(makeKey(hihatRow, beatStartTick + eighth), eighth);
+    map.set(makeKey(hihatRow, beatStartTick), { duration: eighth, type: "normal" });
+    map.set(makeKey(hihatRow, beatStartTick + eighth), { duration: eighth, type: "normal" });
     const beatInMeasure = beatIndex % beatsPerMeasure;
     if (beatInMeasure === 1 || beatInMeasure === 3) {
-      map.set(makeKey(snareRow, beatStartTick), ticksPerBeat);
+      map.set(makeKey(snareRow, beatStartTick), { duration: ticksPerBeat, type: "normal" });
     }
     if (beatInMeasure === 0 || beatInMeasure === 2) {
-      map.set(makeKey(kickRow, beatStartTick), ticksPerBeat);
+      map.set(makeKey(kickRow, beatStartTick), { duration: ticksPerBeat, type: "normal" });
     }
   }
 
@@ -87,7 +94,7 @@ const createRockNotes = (measures: number) => createDefaultNotes(measures);
 
 const createPopNotes = (measures: number) => {
   const totalBeats = measures * beatsPerMeasure;
-  const map = new Map<string, number>();
+  const map = new Map<string, NoteData>();
   const hihatRow = getRowByInstrumentId("hihat");
   const snareRow = getRowByInstrumentId("snare");
   const kickRow = getRowByInstrumentId("kick");
@@ -95,17 +102,17 @@ const createPopNotes = (measures: number) => {
 
   for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
     const beatStartTick = beatIndex * ticksPerBeat;
-    map.set(makeKey(hihatRow, beatStartTick), eighth);
-    map.set(makeKey(hihatRow, beatStartTick + eighth), eighth);
+    map.set(makeKey(hihatRow, beatStartTick), { duration: eighth, type: "normal" });
+    map.set(makeKey(hihatRow, beatStartTick + eighth), { duration: eighth, type: "normal" });
     const beatInMeasure = beatIndex % beatsPerMeasure;
     if (beatInMeasure === 1 || beatInMeasure === 3) {
-      map.set(makeKey(snareRow, beatStartTick), ticksPerBeat);
+      map.set(makeKey(snareRow, beatStartTick), { duration: ticksPerBeat, type: "normal" });
     }
     if (beatInMeasure === 0) {
-      map.set(makeKey(kickRow, beatStartTick), ticksPerBeat);
+      map.set(makeKey(kickRow, beatStartTick), { duration: ticksPerBeat, type: "normal" });
     }
     if (beatInMeasure === 2) {
-      map.set(makeKey(kickRow, beatStartTick + eighth), eighth);
+      map.set(makeKey(kickRow, beatStartTick + eighth), { duration: eighth, type: "normal" });
     }
   }
 
@@ -114,21 +121,21 @@ const createPopNotes = (measures: number) => {
 
 const createShuffleNotes = (measures: number) => {
   const totalBeats = measures * beatsPerMeasure;
-  const map = new Map<string, number>();
+  const map = new Map<string, NoteData>();
   const hihatRow = getRowByInstrumentId("hihat");
   const snareRow = getRowByInstrumentId("snare");
   const kickRow = getRowByInstrumentId("kick");
 
   for (let beatIndex = 0; beatIndex < totalBeats; beatIndex += 1) {
     const beatStartTick = beatIndex * ticksPerBeat;
-    map.set(makeKey(hihatRow, beatStartTick), 4);
-    map.set(makeKey(hihatRow, beatStartTick + 8), 4);
+    map.set(makeKey(hihatRow, beatStartTick), { duration: 4, type: "normal" });
+    map.set(makeKey(hihatRow, beatStartTick + 8), { duration: 4, type: "normal" });
     const beatInMeasure = beatIndex % beatsPerMeasure;
     if (beatInMeasure === 1 || beatInMeasure === 3) {
-      map.set(makeKey(snareRow, beatStartTick), 4);
+      map.set(makeKey(snareRow, beatStartTick), { duration: 4, type: "normal" });
     }
     if (beatInMeasure === 0 || beatInMeasure === 2) {
-      map.set(makeKey(kickRow, beatStartTick), 4);
+      map.set(makeKey(kickRow, beatStartTick), { duration: 4, type: "normal" });
     }
   }
 
@@ -142,27 +149,30 @@ const deserializeNotes = (
   safeSubdivisions: number
 ) => {
   const maxTick = safeMeasures * beatsPerMeasure * ticksPerBeat;
-  const next = new Map<string, number>();
+  const next = new Map<string, NoteData>();
 
   if (
     (parsed.version === 3 ||
       parsed.version === 4 ||
       parsed.version === 5 ||
-      parsed.version === 6) &&
+      parsed.version === 6 ||
+      parsed.version === 7 ||
+      parsed.version === 8) &&
     Array.isArray(parsed.notes)
   ) {
     parsed.notes.forEach((note) => {
       if (typeof note !== "object" || note === null) return;
-      const { row, tick, duration } = note as {
+      const { row, tick, duration, type } = note as {
         row: number;
         tick: number;
         duration: number;
+        type?: NoteType;
       };
       if (Number.isNaN(row) || Number.isNaN(tick)) return;
       if (row < 0 || row >= staffRowCount) return;
       if (tick < 0 || tick >= maxTick) return;
       if (Number.isNaN(duration) || duration <= 0) return;
-      next.set(makeKey(row, tick), duration);
+      next.set(makeKey(row, tick), { duration, type: type || "normal" });
     });
     return next;
   }
@@ -176,12 +186,18 @@ const deserializeNotes = (
     if (parsed.version === 1) {
       const tick = colToTick(parsedKey.tick, safeSubdivisions);
       if (tick >= 0 && tick < maxTick) {
-        next.set(makeKey(parsedKey.row, tick), ticksPerSubdivision(safeSubdivisions));
+        next.set(makeKey(parsedKey.row, tick), {
+          duration: ticksPerSubdivision(safeSubdivisions),
+          type: "normal"
+        });
       }
       return;
     }
     if (parsedKey.tick >= 0 && parsedKey.tick < maxTick) {
-      next.set(makeKey(parsedKey.row, parsedKey.tick), ticksPerSubdivision(safeSubdivisions));
+      next.set(makeKey(parsedKey.row, parsedKey.tick), {
+        duration: ticksPerSubdivision(safeSubdivisions),
+        type: "normal"
+      });
     }
   });
   return next;
@@ -189,7 +205,8 @@ const deserializeNotes = (
 
 export default function DrumGrid() {
   const [measures, setMeasures] = useState(2);
-  const [notes, setNotes] = useState<Map<string, number>>(() => new Map());
+  const [notes, setNotes] = useState<Map<string, NoteData>>(() => new Map());
+  const [noteType, setNoteType] = useState<NoteType>("normal");
   const [bpm, setBpm] = useState(defaultBpm);
   const [cellSize, setCellSize] = useState(24);
   const [samplePreset, setSamplePreset] = useState<
@@ -265,7 +282,8 @@ export default function DrumGrid() {
         parsed.version !== 4 &&
         parsed.version !== 5 &&
         parsed.version !== 6 &&
-        parsed.version !== 7
+        parsed.version !== 7 &&
+        parsed.version !== 8
       )
         return;
       const safeMeasures = clampMeasures(parsed.measures ?? 2);
@@ -314,7 +332,8 @@ export default function DrumGrid() {
       measureIndex: number,
       beatIndex: number,
       colInBeat: number,
-      subdivisions: number
+      subdivisions: number,
+      currentNoteType: NoteType
     ) => {
       setNotes((prev) => {
         const next = new Map(prev);
@@ -323,10 +342,22 @@ export default function DrumGrid() {
         const tick =
           beatStartTick + colInBeat * ticksPerSubdivision(subdivisions);
         const key = makeKey(row, tick);
-        if (next.has(key)) {
-          next.delete(key);
+        const existingNote = next.get(key);
+
+        if (existingNote) {
+          if (existingNote.type === currentNoteType) {
+            // Same type: remove the note
+            next.delete(key);
+          } else {
+            // Different type: update the type
+            next.set(key, { ...existingNote, type: currentNoteType });
+          }
         } else {
-          next.set(key, ticksPerSubdivision(subdivisions));
+          // Add new note with current type
+          next.set(key, {
+            duration: ticksPerSubdivision(subdivisions),
+            type: currentNoteType
+          });
         }
         return next;
       });
@@ -344,13 +375,13 @@ export default function DrumGrid() {
       )
     );
     setNotes((prev) => {
-      const next = new Map<string, number>();
+      const next = new Map<string, NoteData>();
       const maxTick = nextMeasures * beatsPerMeasure * ticksPerBeat;
-      prev.forEach((duration, key) => {
+      prev.forEach((noteData, key) => {
         const parsedKey = parseKey(key);
         if (!parsedKey) return;
         if (parsedKey.tick < maxTick) {
-          next.set(key, duration);
+          next.set(key, noteData);
         }
       });
       return next;
@@ -377,17 +408,18 @@ export default function DrumGrid() {
 
   const handleSave = () => {
     const payload: SavedGrid = {
-      version: 7,
+      version: 8,
       measures,
       beatsPerMeasure,
       subdivisions: 4,
       subdivisionsPerBeat: subdivisionsByBeat,
-      notes: Array.from(notes.entries()).map(([key, duration]) => {
+      notes: Array.from(notes.entries()).map(([key, noteData]) => {
         const parsedKey = parseKey(key);
         return {
           row: parsedKey?.row ?? 0,
           tick: parsedKey?.tick ?? 0,
-          duration,
+          duration: noteData.duration,
+          type: noteData.type,
         };
       }),
     };
@@ -413,7 +445,8 @@ export default function DrumGrid() {
         parsed.version !== 4 &&
         parsed.version !== 5 &&
         parsed.version !== 6 &&
-        parsed.version !== 7
+        parsed.version !== 7 &&
+        parsed.version !== 8
       ) {
         setLastSavedAt({ key: "status.unsupported" });
         return;
@@ -701,7 +734,9 @@ export default function DrumGrid() {
         const source = context.createBufferSource();
         source.buffer = buffer;
         const gain = context.createGain();
-        gain.gain.setValueAtTime(0.9, startTime);
+        // Adjust gain based on velocity (ghost notes have lower velocity)
+        const velocityGain = (note.velocity / 100) * 0.9;
+        gain.gain.setValueAtTime(velocityGain, startTime);
         gain.gain.exponentialRampToValueAtTime(0.001, endTime + 0.02);
         source.connect(gain).connect(context.destination);
         source.start(startTime);
@@ -800,6 +835,43 @@ export default function DrumGrid() {
       </div>
 
       <div className="toolbar">
+        <div className="toolbar-group">
+          <label>{t("controls.noteType")}</label>
+          <div className="note-type-selector">
+            <button
+              type="button"
+              className={noteType === "normal" ? "active" : ""}
+              onClick={() => setNoteType("normal")}
+              title={t("controls.noteType.normal")}
+            >
+              {t("controls.noteType.normal")}
+            </button>
+            <button
+              type="button"
+              className={noteType === "ghost" ? "active" : ""}
+              onClick={() => setNoteType("ghost")}
+              title={t("controls.noteType.ghost")}
+            >
+              {t("controls.noteType.ghost")}
+            </button>
+            <button
+              type="button"
+              className={noteType === "accent" ? "active" : ""}
+              onClick={() => setNoteType("accent")}
+              title={t("controls.noteType.accent")}
+            >
+              {t("controls.noteType.accent")}
+            </button>
+            <button
+              type="button"
+              className={noteType === "flam" ? "active" : ""}
+              onClick={() => setNoteType("flam")}
+              title={t("controls.noteType.flam")}
+            >
+              {t("controls.noteType.flam")}
+            </button>
+          </div>
+        </div>
         <div className="toolbar-group">
           <label htmlFor="samples-select">{t("controls.samples")}</label>
           <div className="measure-input">
@@ -1022,7 +1094,8 @@ export default function DrumGrid() {
                                   colInBeat *
                                     ticksPerSubdivision(subdivisions);
                                 const cellKey = makeKey(row, tick);
-                                const active = notes.has(cellKey);
+                                const noteData = notes.get(cellKey);
+                                const active = !!noteData;
                                 const isBeatStart = colInBeat === 0;
                                 return (
                                   <button
@@ -1030,7 +1103,7 @@ export default function DrumGrid() {
                                     type="button"
                                     className={`cell ${
                                       active ? "active" : ""
-                                    } ${isBeatStart ? "beat-start" : ""} ${beatIndex % 2 === 0 ? "beat-even" : "beat-odd"}`}
+                                    } ${active && noteData ? `note-${noteData.type}` : ""} ${isBeatStart ? "beat-start" : ""} ${beatIndex % 2 === 0 ? "beat-even" : "beat-odd"}`}
                                     onClick={() =>
                                       instrument &&
                                       toggleNote(
@@ -1038,7 +1111,8 @@ export default function DrumGrid() {
                                         measureIndex,
                                         beatIndex,
                                         colInBeat,
-                                        subdivisions
+                                        subdivisions,
+                                        noteType
                                       )
                                     }
                                     disabled={!instrument}
@@ -1080,7 +1154,7 @@ export default function DrumGrid() {
         <div className="osmd-header">
           <h2>Notation Preview</h2>
         </div>
-        <OsmdViewer musicXml={musicXml} />
+        <VerovioViewer musicXml={musicXml} />
       </div>
       </section>
     </div>
