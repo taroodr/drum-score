@@ -17,5 +17,6 @@ declare module 'verovio/esm' {
     }): void;
     loadData(data: string): boolean;
     renderToSVG(page: number): string;
+    getPageCount(): number;
   }
 }
