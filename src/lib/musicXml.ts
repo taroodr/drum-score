@@ -371,12 +371,49 @@ export const buildMusicXml = ({
           }
           );
         } else {
-          activeInstruments.forEach((instrument, chordIndex) => {
+          // Separate flam and non-flam instruments
+          const flamInstruments = activeInstruments.filter((instrument) => {
+            const noteKey = makeKey(instrument.gridRow, absoluteTick);
+            return notes.get(noteKey)?.type === "flam";
+          });
+          const nonFlamInstruments = activeInstruments.filter((instrument) => {
+            const noteKey = makeKey(instrument.gridRow, absoluteTick);
+            return notes.get(noteKey)?.type !== "flam";
+          });
+
+          // Generate grace notes for flams first
+          flamInstruments.forEach((instrument, flamIndex) => {
+            const pitch = rowPitchMap[instrument.staffRow] ?? rowPitchMap[4];
+            const instrumentId = `P1-${instrument.id}`;
+            let noteHead = "";
+            if (instrument.noteHead === "x") {
+              noteHead = "<notehead>x</notehead>";
+            }
+            const chordTag = flamIndex > 0 ? "<chord/>" : "";
+            notesXml.push(`
+        <note>
+          ${chordTag}
+          <grace slash="yes"/>
+          <unpitched>
+            <display-step>${pitch.step}</display-step>
+            <display-octave>${pitch.octave}</display-octave>
+          </unpitched>
+          <instrument id="${instrumentId}" />
+          <voice>1</voice>
+          <type>eighth</type>
+          <stem>up</stem>
+          ${noteHead}
+          <staff>1</staff>
+        </note>`);
+          });
+
+          // Generate main notes (flam main notes + non-flam notes)
+          const mainNoteInstruments = [...flamInstruments, ...nonFlamInstruments];
+          mainNoteInstruments.forEach((instrument, chordIndex) => {
             const noteKey = makeKey(instrument.gridRow, absoluteTick);
             const noteData = notes.get(noteKey);
             const pitch = rowPitchMap[instrument.staffRow] ?? rowPitchMap[4];
             const instrumentId = `P1-${instrument.id}`;
-            const isFlam = noteData?.type === "flam";
             const isGhost = noteData?.type === "ghost";
 
             // Notehead with parentheses for ghost notes
@@ -392,11 +429,9 @@ export const buildMusicXml = ({
             const noteType = durationToType(rawDuration);
             const timeModification = durationToTimeModification(rawDuration);
             const dot = durationToDot(rawDuration);
-            const graceTag = isFlam ? "<grace/>" : "";
-            const durationTag = isFlam ? "" : `<duration>${rawDuration}</duration>`;
 
             const beamParts: string[] = [];
-            if (chordIndex === 0 && !isFlam) {
+            if (chordIndex === 0) {
               if (beam1States[index] !== "") {
                 beamParts.push(
                   `<beam number="1">${beam1States[index]}</beam>`
@@ -411,7 +446,7 @@ export const buildMusicXml = ({
             const beamTag = beamParts.join("");
 
             // Build notations tag with tuplet and articulations
-            const tupletNotation = isFlam ? "" : buildTupletNotation(absoluteTick, rawDuration);
+            const tupletNotation = buildTupletNotation(absoluteTick, rawDuration);
             const notationParts: string[] = [];
 
             // Extract tuplet content if exists
@@ -435,12 +470,11 @@ export const buildMusicXml = ({
             notesXml.push(`
         <note>
           ${chordTag}
-          ${graceTag}
           <unpitched>
             <display-step>${pitch.step}</display-step>
             <display-octave>${pitch.octave}</display-octave>
           </unpitched>
-          ${durationTag}
+          <duration>${rawDuration}</duration>
           <instrument id="${instrumentId}" />
           <voice>1</voice>
           <type>${noteType}</type>
