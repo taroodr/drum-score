@@ -94,11 +94,15 @@ export const parseMidiNotesFromMusicXml = (
       const midi = instrumentId ? midiMap.get(instrumentId) : undefined;
       if (!midi) return;
 
+      // Check for dynamics (ghost notes have pp)
+      const hasDynamics = Boolean(note.querySelector("dynamics pp"));
+      const velocity = hasDynamics ? 40 : 100;
+
       notes.push({
         startTick: currentTick,
         duration,
         midi,
-        velocity: 100,
+        velocity,
       });
     });
 
@@ -158,12 +162,16 @@ export const buildMidiFromMusicXml = (musicXml: string, bpm = 120) => {
       const midi = instrumentId ? midiMap.get(instrumentId) : undefined;
       if (!midi) return;
 
+      // Check for dynamics (ghost notes have pp)
+      const hasDynamics = Boolean(note.querySelector("dynamics pp"));
+      const velocity = hasDynamics ? 40 : 100;
+
       const startTick = currentTick;
       const endTick = currentTick + duration;
       events.push({
         time: startTick,
         sort: 1,
-        data: [0x99, midi, 100],
+        data: [0x99, midi, velocity],
       });
       events.push({
         time: endTick,
