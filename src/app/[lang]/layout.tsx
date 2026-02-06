@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { supportedLocales, type SupportedLocale } from "@/lib/locales";
@@ -122,20 +123,22 @@ export default async function LangLayout({
     url: `https://drum-score.pages.dev/${lang}`,
   };
   return (
-    <LanguageProvider initialLocale={lang}>
-      <AuthProvider>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
-        />
-        <SiteHeader />
-        {children}
-        <SiteFooter />
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider initialLocale={lang}>
+        <AuthProvider>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
+          />
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
