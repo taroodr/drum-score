@@ -45,8 +45,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Maak, speel af en exporteer drumnotatie gratis",
     "hero.subtitle":
       "Voor drummers die een drumnotatie‑editor zoeken. Klik om noten in te voeren, maak scores, exporteer PDF/MIDI en speel af.",
-    "hero.cta": "Begin met invoeren",
-    "hero.ctaNote": "Geen registratie · Gratis",
     "controls.noteType": "Notetype",
     "controls.noteType.normal": "Normaal",
     "controls.noteType.ghost": "Ghost",
@@ -127,8 +125,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Buat, putar, dan ekspor notasi drum secara gratis",
     "hero.subtitle":
       "Untuk drummer yang mencari editor notasi drum. Klik untuk memasukkan nada, buat partitur, ekspor PDF/MIDI, dan putar.",
-    "hero.cta": "Mulai input",
-    "hero.ctaNote": "Tanpa daftar · Gratis",
     "controls.samples": "Contoh",
     "controls.samples.helper": "Muat pola dengan sekali klik",
     "controls.samples.rock": "Rock 8beat",
@@ -204,8 +200,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Drum‑Notation kostenlos erstellen, abspielen und exportieren",
     "hero.subtitle":
       "Für Drummer, die einen Drum‑Notation‑Editor suchen. Klicke zum Eingeben, erstelle Partituren, exportiere PDF/MIDI und spiele ab.",
-    "hero.cta": "Jetzt eingeben",
-    "hero.ctaNote": "Keine Anmeldung · Kostenlos",
     "controls.noteType": "Notentyp",
     "controls.noteType.normal": "Normal",
     "controls.noteType.ghost": "Ghost",
@@ -286,8 +280,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Create, play, and export drum notation for free",
     "hero.subtitle":
       "For drummers looking for a drum notation editor. Click to enter notes, create scores, export PDF/MIDI, and play back.",
-    "hero.cta": "Start input",
-    "hero.ctaNote": "No signup · Free",
     "controls.noteType": "Note Type",
     "controls.noteType.normal": "Normal",
     "controls.noteType.ghost": "Ghost",
@@ -368,8 +360,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Crea, reproduce y exporta notación de batería gratis",
     "hero.subtitle":
       "Para bateristas que buscan un editor de notación. Haz clic para introducir notas, crea partituras, exporta PDF/MIDI y reproduce.",
-    "hero.cta": "Empezar",
-    "hero.ctaNote": "Sin registro · Gratis",
     "controls.noteType": "Tipo de nota",
     "controls.noteType.normal": "Normal",
     "controls.noteType.ghost": "Ghost",
@@ -450,8 +440,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Créez, jouez et exportez des partitions de batterie gratuitement",
     "hero.subtitle":
       "Pour les batteurs qui recherchent un éditeur de notation. Cliquez pour saisir des notes, créer des partitions, exporter en PDF/MIDI et lire.",
-    "hero.cta": "Commencer",
-    "hero.ctaNote": "Sans inscription · Gratuit",
     "controls.noteType": "Type de note",
     "controls.noteType.normal": "Normal",
     "controls.noteType.ghost": "Ghost",
@@ -532,8 +520,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Crea, riproduci ed esporta notazione di batteria gratis",
     "hero.subtitle":
       "Per batteristi che cercano un editor di notazione. Clicca per inserire note, crea spartiti, esporta PDF/MIDI e riproduci.",
-    "hero.cta": "Inizia",
-    "hero.ctaNote": "Nessuna registrazione · Gratis",
     "controls.samples": "Esempi",
     "controls.samples.helper": "Carica un pattern con un clic",
     "controls.samples.rock": "Rock 8beat",
@@ -609,8 +595,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Twórz, odtwarzaj i eksportuj zapis perkusji za darmo",
     "hero.subtitle":
       "Dla perkusistów szukających edytora zapisu. Kliknij, aby wprowadzać nuty, twórz partytury, eksportuj PDF/MIDI i odtwarzaj.",
-    "hero.cta": "Zacznij",
-    "hero.ctaNote": "Bez rejestracji · Za darmo",
     "controls.samples": "Przykłady",
     "controls.samples.helper": "Wczytaj wzór jednym kliknięciem",
     "controls.samples.rock": "Rock 8beat",
@@ -686,8 +670,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Crie, reproduza e exporte notação de bateria gratuitamente",
     "hero.subtitle":
       "Para bateristas que procuram um editor de notação. Clique para inserir notas, crie partituras, exporte PDF/MIDI e reproduza.",
-    "hero.cta": "Começar",
-    "hero.ctaNote": "Sem cadastro · Grátis",
     "controls.samples": "Amostras",
     "controls.samples.helper": "Carregue um padrão com um clique",
     "controls.samples.rock": "Rock 8beat",
@@ -763,8 +745,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Tạo, phát và xuất ký âm trống miễn phí",
     "hero.subtitle":
       "Dành cho tay trống tìm kiếm trình soạn ký âm. Nhấp để nhập nốt, tạo bản nhạc, xuất PDF/MIDI và phát lại.",
-    "hero.cta": "Bắt đầu nhập",
-    "hero.ctaNote": "Không cần đăng ký · Miễn phí",
     "controls.samples": "Mẫu",
     "controls.samples.helper": "Tải mẫu chỉ với một nhấp",
     "controls.samples.rock": "Rock 8beat",
@@ -840,8 +820,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Davul notası oluştur, çal ve dışa aktar — ücretsiz",
     "hero.subtitle":
       "Davul notasyon düzenleyicisi arayan davulcular için. Notaları tıklayarak gir, partisyon oluştur, PDF/MIDI dışa aktar ve çal.",
-    "hero.cta": "Girmeye başla",
-    "hero.ctaNote": "Kayıt yok · Ücretsiz",
     "controls.samples": "Örnekler",
     "controls.samples.helper": "Tek tıkla bir kalıp yükle",
     "controls.samples.rock": "Rock 8beat",
@@ -917,8 +895,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "Создавайте, воспроизводите и экспортируйте барабанные ноты бесплатно",
     "hero.subtitle":
       "Для барабанщиков, которым нужен редактор нотации. Нажмите, чтобы вводить ноты, создавайте партитуры, экспортируйте PDF/MIDI и воспроизводите.",
-    "hero.cta": "Начать ввод",
-    "hero.ctaNote": "Без регистрации · Бесплатно",
     "controls.samples": "Примеры",
     "controls.samples.helper": "Загрузите паттерн одним кликом",
     "controls.samples.rock": "Rock 8beat",
@@ -994,8 +970,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "أنشئ و شغّل و صدّر تدوين الطبول مجانًا",
     "hero.subtitle":
       "لعازفي الطبول الذين يبحثون عن محرر تدوين. انقر لإدخال النوتات، أنشئ المدونات، صدّر PDF/MIDI وشغّل.",
-    "hero.cta": "ابدأ الإدخال",
-    "hero.ctaNote": "بدون تسجيل · مجاني",
     "controls.samples": "أمثلة",
     "controls.samples.helper": "حمّل نمطًا بنقرة واحدة",
     "controls.samples.rock": "Rock 8beat",
@@ -1071,8 +1045,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "สร้าง เล่น และส่งออกโน้ตกลองฟรี",
     "hero.subtitle":
       "สำหรับมือกลองที่ต้องการตัวแก้ไขโน้ต คลิกเพื่อใส่โน้ต สร้างสกอร์ ส่งออก PDF/MIDI และเล่นกลับ",
-    "hero.cta": "เริ่มพิมพ์โน้ต",
-    "hero.ctaNote": "ไม่ต้องลงทะเบียน · ฟรี",
     "controls.samples": "ตัวอย่าง",
     "controls.samples.helper": "โหลดแพตเทิร์นด้วยคลิกเดียว",
     "controls.samples.rock": "Rock 8beat",
@@ -1148,8 +1120,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "ドラム譜を作成・再生・書き出しできる無料エディタ",
     "hero.subtitle":
       "ドラム譜作成・ドラム譜ソフトを探している方向け。クリック入力で楽譜作成、PDF/MIDI書き出し、再生に対応。",
-    "hero.cta": "今すぐ打ち込み",
-    "hero.ctaNote": "登録不要・無料",
     "controls.noteType": "Note Type",
     "controls.noteType.normal": "Normal",
     "controls.noteType.ghost": "Ghosted",
@@ -1230,8 +1200,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "免费创建、播放并导出鼓谱",
     "hero.subtitle":
       "面向需要鼓谱编辑器的鼓手。点击输入音符，制作谱面，导出 PDF/MIDI 并播放。",
-    "hero.cta": "开始输入",
-    "hero.ctaNote": "无需注册 · 免费",
     "controls.samples": "示例",
     "controls.samples.helper": "一键加载节奏",
     "controls.samples.rock": "Rock 8beat",
@@ -1307,8 +1275,6 @@ const translations: Record<Locale, Dictionary> = {
     "hero.title": "드럼 악보를 무료로 만들고 재생·내보내기",
     "hero.subtitle":
       "드럼 악보 편집기를 찾는 드러머를 위한 서비스입니다. 클릭으로 입력하고, 악보를 만들고, PDF/MIDI로 내보내고 재생하세요.",
-    "hero.cta": "지금 입력",
-    "hero.ctaNote": "가입 필요 없음 · 무료",
     "controls.samples": "샘플",
     "controls.samples.helper": "원클릭으로 패턴 로드",
     "controls.samples.rock": "Rock 8beat",

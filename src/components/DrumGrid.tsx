@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
-import { jsPDF } from "jspdf";
 import {
   drumKit,
   instrumentByRow,
@@ -9,16 +8,14 @@ import {
   staffRowCount,
 } from "@/lib/drumKit";
 import { buildMusicXml } from "@/lib/musicXml";
-import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
-import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
 import { useLanguage } from "@/components/LanguageProvider";
 import VerovioViewer from "@/components/VerovioViewer";
-import AuthButton from "@/components/AuthButton";
 import { useAuth } from "@/components/AuthProvider";
 import ScoreList from "@/components/ScoreList";
-import { saveScore, type CloudScore, type SavedGrid as CloudSavedGrid } from "@/lib/firestore";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+import { useScoreSave, type SavedGrid } from "@/hooks/useScoreSave";
+import { useExport } from "@/hooks/useExport";
 
-const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
 const ticksPerBeat = 12;
 const defaultBpm = 100;
@@ -33,17 +30,6 @@ export type NoteType = "normal" | "ghost" | "accent" | "flam";
 type NoteData = {
   duration: number;
   type: NoteType;
-};
-
-type SavedGrid = {
-  version: 8 | 7 | 6 | 5 | 4 | 3 | 2 | 1;
-  measures: number;
-  beatsPerMeasure: number;
-  subdivisions: number;
-  notes: string[] | { row: number; tick: number; duration: number; type?: NoteType }[];
-  subdivisionsPerMeasure?: number[];
-  subdivisionsPerBeat?: number[];
-  tripletBeats?: string[];
 };
 
 const clampMeasures = (value: number) => {
@@ -212,6 +198,7 @@ export default function DrumGrid() {
   const [notes, setNotes] = useState<Map<string, NoteData>>(() => new Map());
   const [noteType, setNoteType] = useState<NoteType>("normal");
   const [bpm, setBpm] = useState(defaultBpm);
+  const [bpmInput, setBpmInput] = useState(String(defaultBpm));
   const [cellSize, setCellSize] = useState(24);
   const [samplePreset, setSamplePreset] = useState<
     "rock" | "pop" | "shuffle" | ""
@@ -219,30 +206,9 @@ export default function DrumGrid() {
   const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
     () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
-  const [lastSavedAt, setLastSavedAt] = useState<
-    { key: string; detail?: string } | null
-  >(null);
-  const [exportStatus, setExportStatus] = useState<
-    { key: string; detail?: string } | null
-  >(null);
-  const [scoreTitle, setScoreTitle] = useState("");
-  const [currentScoreId, setCurrentScoreId] = useState<string | null>(null);
-  const [showScoreList, setShowScoreList] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const osmdExportRef = useRef<HTMLDivElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sampleBuffersRef = useRef<Map<string, AudioBuffer> | null>(null);
-  const sampleLoadingRef = useRef<Promise<Map<string, AudioBuffer>> | null>(
-    null
-  );
-  const playbackSourcesRef = useRef<AudioBufferSourceNode[]>([]);
-  const playbackTimeoutsRef = useRef<number[]>([]);
   const divisionGridRef = useRef<HTMLDivElement | null>(null);
   const staffGridRef = useRef<HTMLDivElement | null>(null);
   const isSyncingScrollRef = useRef(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const rafIdRef = useRef(0);
   const cursorRef = useRef<HTMLDivElement | null>(null);
   const tickToPixelXRef = useRef<(tick: number) => number>(() => 0);
 
@@ -268,73 +234,77 @@ export default function DrumGrid() {
     };
   }, [cellSize, subdivisionsByBeat]);
 
-  const { locale, t } = useLanguage();
+  const { t } = useLanguage();
   const { user } = useAuth();
 
-  useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const defaultMeasures = 2;
-      setMeasures(defaultMeasures);
-      setSubdivisionsByBeat(
-        Array.from({ length: defaultMeasures * beatsPerMeasure }, () => 4)
-      );
-      setNotes(createDefaultNotes(defaultMeasures));
-      setLastSavedAt({ key: "status.loaded.default" });
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as SavedGrid;
-      if (
-        parsed.version !== 1 &&
-        parsed.version !== 2 &&
-        parsed.version !== 3 &&
-        parsed.version !== 4 &&
-        parsed.version !== 5 &&
-        parsed.version !== 6 &&
-        parsed.version !== 7 &&
-        parsed.version !== 8
-      )
-        return;
-      const safeMeasures = clampMeasures(parsed.measures ?? 2);
-      const totalBeats = safeMeasures * beatsPerMeasure;
-      const fallbackSubdivisions =
-        typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
-      const safeSubdivisionsByBeat =
-        parsed.subdivisionsPerBeat?.length === totalBeats
-          ? parsed.subdivisionsPerBeat
-          : parsed.subdivisionsPerMeasure?.length === safeMeasures
-            ? Array.from({ length: totalBeats }, (_, index) => {
-                const measureIndex = Math.floor(index / beatsPerMeasure);
-                return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
-              })
-            : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
-      const filtered = deserializeNotes(
-        parsed,
-        safeMeasures,
-        fallbackSubdivisions
-      );
-      const shouldSeedDefault =
-        (Array.isArray(parsed.notes) && parsed.notes.length === 0) ||
-        filtered.size === 0;
-      setMeasures(safeMeasures);
-      setSubdivisionsByBeat(safeSubdivisionsByBeat);
-      setNotes(shouldSeedDefault ? createDefaultNotes(safeMeasures) : filtered);
-      setLastSavedAt({
-        key: shouldSeedDefault
-          ? "status.loaded.default"
-          : "status.loaded.local",
-      });
-    } catch (error) {
-      console.warn("Failed to load saved drum score", error);
-    }
-  }, []);
+  const musicXml = useMemo(
+    () =>
+      buildMusicXml({
+        measures,
+        beatsPerMeasure,
+        ticksPerBeat,
+        notes,
+        subdivisionsByBeat,
+      }),
+    [measures, notes, subdivisionsByBeat]
+  );
 
+  // Audio playback hook
+  const {
+    playMidi,
+    stopPlayback,
+    exportStatus,
+    setExportStatus,
+  } = useAudioPlayback({
+    bpm,
+    measures,
+    beatsPerMeasure,
+    ticksPerBeat,
+    musicXml,
+    tickToPixelXRef,
+    staffGridRef,
+    cursorRef,
+  });
+
+  // Export hook
+  const { osmdExportRef, exportPdf, exportPng, exportMidi } = useExport({
+    musicXml,
+    bpm,
+    setExportStatus,
+  });
+
+  // Score save hook
+  const {
+    lastSavedAt,
+    scoreTitle,
+    setScoreTitle,
+    showScoreList,
+    setShowScoreList,
+    showSaveDialog,
+    setShowSaveDialog,
+    isSaving,
+    handleSave,
+    handleLoad,
+    handleCloudSave,
+    handleCloudLoad,
+    loadFromLocalStorage,
+  } = useScoreSave({
+    measures,
+    beatsPerMeasure,
+    subdivisionsByBeat,
+    notes,
+    setMeasures,
+    setSubdivisionsByBeat: (subs) => setSubdivisionsByBeat(subs),
+    setNotes,
+    createDefaultNotes,
+    deserializeNotes,
+    clampMeasures,
+  });
+
+  // Load from local storage on mount
   useEffect(() => {
-    return () => {
-      cancelAnimationFrame(rafIdRef.current);
-    };
-  }, []);
+    loadFromLocalStorage();
+  }, [loadFromLocalStorage]);
 
   const toggleNote = useCallback(
     (
@@ -356,14 +326,11 @@ export default function DrumGrid() {
 
         if (existingNote) {
           if (existingNote.type === currentNoteType) {
-            // Same type: remove the note
             next.delete(key);
           } else {
-            // Different type: update the type
             next.set(key, { ...existingNote, type: currentNoteType });
           }
         } else {
-          // Add new note with current type
           next.set(key, {
             duration: ticksPerSubdivision(subdivisions),
             type: currentNoteType
@@ -416,137 +383,6 @@ export default function DrumGrid() {
     });
   };
 
-  const buildSavePayload = useCallback((): SavedGrid => {
-    return {
-      version: 8,
-      measures,
-      beatsPerMeasure,
-      subdivisions: 4,
-      subdivisionsPerBeat: subdivisionsByBeat,
-      notes: Array.from(notes.entries()).map(([key, noteData]) => {
-        const parsedKey = parseKey(key);
-        return {
-          row: parsedKey?.row ?? 0,
-          tick: parsedKey?.tick ?? 0,
-          duration: noteData.duration,
-          type: noteData.type,
-        };
-      }),
-    };
-  }, [measures, subdivisionsByBeat, notes]);
-
-  const handleSave = () => {
-    const payload = buildSavePayload();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    setLastSavedAt({
-      key: "status.saved",
-      detail: new Date().toLocaleString(locale),
-    });
-  };
-
-  const handleCloudSave = async () => {
-    if (!user) return;
-    const title = scoreTitle.trim() || t("cloud.untitled");
-    setIsSaving(true);
-    try {
-      const payload = buildSavePayload();
-      const id = await saveScore(user.uid, title, payload as CloudSavedGrid, currentScoreId || undefined);
-      if (id) {
-        setCurrentScoreId(id);
-        setScoreTitle(title);
-        setLastSavedAt({
-          key: "status.cloud.saved",
-          detail: title,
-        });
-      } else {
-        setLastSavedAt({ key: "status.cloud.saveFailed" });
-      }
-    } finally {
-      setIsSaving(false);
-      setShowSaveDialog(false);
-    }
-  };
-
-  const handleCloudLoad = (score: CloudScore) => {
-    const parsed = score.data;
-    const safeMeasures = clampMeasures(parsed.measures ?? 2);
-    const totalBeats = safeMeasures * beatsPerMeasure;
-    const fallbackSubdivisions =
-      typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
-    const safeSubdivisionsByBeat =
-      parsed.subdivisionsPerBeat?.length === totalBeats
-        ? parsed.subdivisionsPerBeat
-        : parsed.subdivisionsPerMeasure?.length === safeMeasures
-          ? Array.from({ length: totalBeats }, (_, index) => {
-              const measureIndex = Math.floor(index / beatsPerMeasure);
-              return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
-            })
-          : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
-    const filtered = deserializeNotes(
-      parsed as SavedGrid,
-      safeMeasures,
-      fallbackSubdivisions
-    );
-    setMeasures(safeMeasures);
-    setSubdivisionsByBeat(safeSubdivisionsByBeat);
-    setNotes(filtered);
-    setCurrentScoreId(score.id);
-    setScoreTitle(score.title);
-    setLastSavedAt({
-      key: "status.cloud.loaded",
-      detail: score.title,
-    });
-  };
-
-  const handleLoad = () => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      setLastSavedAt({ key: "status.noSave" });
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as SavedGrid;
-      if (
-        parsed.version !== 1 &&
-        parsed.version !== 2 &&
-        parsed.version !== 3 &&
-        parsed.version !== 4 &&
-        parsed.version !== 5 &&
-        parsed.version !== 6 &&
-        parsed.version !== 7 &&
-        parsed.version !== 8
-      ) {
-        setLastSavedAt({ key: "status.unsupported" });
-        return;
-      }
-      const safeMeasures = clampMeasures(parsed.measures ?? 2);
-      const totalBeats = safeMeasures * beatsPerMeasure;
-      const fallbackSubdivisions =
-        typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
-      const safeSubdivisionsByBeat =
-        parsed.subdivisionsPerBeat?.length === totalBeats
-          ? parsed.subdivisionsPerBeat
-          : parsed.subdivisionsPerMeasure?.length === safeMeasures
-            ? Array.from({ length: totalBeats }, (_, index) => {
-                const measureIndex = Math.floor(index / beatsPerMeasure);
-                return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
-              })
-            : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
-      const filtered = deserializeNotes(
-        parsed,
-        safeMeasures,
-        fallbackSubdivisions
-      );
-      setMeasures(safeMeasures);
-      setSubdivisionsByBeat(safeSubdivisionsByBeat);
-      setNotes(filtered);
-      setLastSavedAt({ key: "status.loaded.local" });
-    } catch (error) {
-      console.warn("Failed to load saved drum score", error);
-      setLastSavedAt({ key: "status.failedLoad" });
-    }
-  };
-
   const rows = useMemo(
     () => Array.from({ length: staffRowCount }, (_, row) => row),
     []
@@ -559,191 +395,6 @@ export default function DrumGrid() {
     },
     [t]
   );
-  const musicXml = useMemo(
-    () =>
-      buildMusicXml({
-        measures,
-        beatsPerMeasure,
-        ticksPerBeat,
-        notes,
-        subdivisionsByBeat,
-      }),
-    [measures, notes, subdivisionsByBeat]
-  );
-
-  const exportSvgAsPng = async () => {
-    const svg = osmdExportRef.current?.querySelector("svg");
-    if (!svg) throw new Error("OSMD SVG not found");
-    const serializer = new XMLSerializer();
-    const svgText = serializer.serializeToString(svg);
-    const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    try {
-      const img = new Image();
-      img.decoding = "async";
-      const svgWidth = svg.viewBox.baseVal.width || svg.clientWidth;
-      const svgHeight = svg.viewBox.baseVal.height || svg.clientHeight;
-      const width = Math.max(1, Math.ceil(svgWidth));
-      const height = Math.max(1, Math.ceil(svgHeight));
-      const scale = 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas context unavailable");
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = reject;
-        img.src = url;
-      });
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL("image/png");
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  };
-
-  const exportPng = async () => {
-    if (!osmdExportRef.current) return;
-    setExportStatus({ key: "status.export.png" });
-    try {
-      const dataUrl = await exportSvgAsPng();
-      const link = document.createElement("a");
-      link.download = `drum-score-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-      setExportStatus({ key: "status.export.png.done" });
-    } catch (error) {
-      console.error(error);
-      setExportStatus({ key: "status.export.png.fail" });
-    }
-  };
-
-  const exportPdf = async () => {
-    if (!osmdExportRef.current) return;
-    setExportStatus({ key: "status.export.pdf" });
-    try {
-      const dataUrl = await exportSvgAsPng();
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "pt",
-        format: "a4",
-      });
-      const img = new Image();
-      img.onload = () => {
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const ratio = Math.min(pageWidth / img.width, pageHeight / img.height);
-        const width = img.width * ratio;
-        const height = img.height * ratio;
-        const x = (pageWidth - width) / 2;
-        const y = (pageHeight - height) / 2;
-        pdf.addImage(img, "PNG", x, y, width, height);
-        pdf.save(`drum-score-${Date.now()}.pdf`);
-        setExportStatus({ key: "status.export.pdf.done" });
-      };
-      img.src = dataUrl;
-    } catch (error) {
-      console.error(error);
-      setExportStatus({ key: "status.export.pdf.fail" });
-    }
-  };
-
-  const exportMidi = () => {
-    setExportStatus({ key: "status.export.midi" });
-    try {
-      const midiBytes = buildMidiFromMusicXml(musicXml, bpm);
-      const blob = new Blob([midiBytes], { type: "audio/midi" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.download = `drum-score-${Date.now()}.mid`;
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
-      setExportStatus({ key: "status.export.midi.done" });
-    } catch (error) {
-      console.error(error);
-      setExportStatus({ key: "status.export.midi.fail" });
-    }
-  };
-
-  const ensureSamplesLoaded = async (context: AudioContext) => {
-    if (sampleBuffersRef.current) return sampleBuffersRef.current;
-    if (!sampleLoadingRef.current) {
-      sampleLoadingRef.current = loadDrumSamples(context);
-    }
-    try {
-      const buffers = await sampleLoadingRef.current;
-      sampleBuffersRef.current = buffers;
-      return buffers;
-    } catch (error) {
-      sampleLoadingRef.current = null;
-      throw error;
-    }
-  };
-
-  const stopCursorAnimation = useCallback(() => {
-    cancelAnimationFrame(rafIdRef.current);
-    rafIdRef.current = 0;
-    if (cursorRef.current) {
-      cursorRef.current.style.display = "none";
-    }
-    setIsPlaying(false);
-  }, []);
-
-  const startCursorAnimation = useCallback(
-    (
-      context: AudioContext,
-      startAt: number,
-      totalTicks: number,
-      secondsPerTick: number
-    ) => {
-      setIsPlaying(true);
-      if (cursorRef.current) {
-        cursorRef.current.style.display = "block";
-        cursorRef.current.style.transform = "translateX(0px)";
-      }
-      const animate = () => {
-        const elapsed = context.currentTime - startAt;
-        const currentTick = elapsed / secondsPerTick;
-        if (currentTick >= totalTicks) {
-          stopCursorAnimation();
-          return;
-        }
-        const pixelX = tickToPixelXRef.current(currentTick);
-        if (cursorRef.current) {
-          cursorRef.current.style.transform = `translateX(${pixelX}px)`;
-        }
-        if (staffGridRef.current) {
-          const scrollLeft = staffGridRef.current.scrollLeft;
-          const viewWidth = staffGridRef.current.clientWidth;
-          if (pixelX > scrollLeft + viewWidth - 20 || pixelX < scrollLeft) {
-            staffGridRef.current.scrollLeft = pixelX - 20;
-          }
-        }
-        rafIdRef.current = requestAnimationFrame(animate);
-      };
-      rafIdRef.current = requestAnimationFrame(animate);
-    },
-    [stopCursorAnimation]
-  );
-
-  const stopPlayback = useCallback(() => {
-    stopCursorAnimation();
-    playbackSourcesRef.current.forEach((source) => {
-      try {
-        source.stop();
-      } catch {
-        // ignore
-      }
-    });
-    playbackSourcesRef.current = [];
-    playbackTimeoutsRef.current.forEach((timer) => window.clearTimeout(timer));
-    playbackTimeoutsRef.current = [];
-    setExportStatus(null);
-  }, [stopCursorAnimation]);
 
   const handleDivisionScroll = useCallback(() => {
     if (!divisionGridRef.current || !staffGridRef.current) return;
@@ -764,77 +415,6 @@ export default function DrumGrid() {
       isSyncingScrollRef.current = false;
     });
   }, []);
-
-  const playMidi = async () => {
-    setExportStatus({ key: "status.playing" });
-    try {
-      stopPlayback();
-      const { divisions, notes } = parseMidiNotesFromMusicXml(musicXml);
-      if (!notes.length) {
-        setExportStatus({ key: "status.playing.noNotes" });
-        return;
-      }
-
-      const context =
-        audioContextRef.current ??
-        new AudioContext({
-          latencyHint: "interactive",
-        });
-      audioContextRef.current = context;
-      if (context.state === "suspended") {
-        await context.resume();
-      }
-
-      setExportStatus({ key: "status.playing.loading" });
-      const buffers = await ensureSamplesLoaded(context);
-
-      const startAt = context.currentTime + 0.05;
-      const secondsPerQuarter = 60 / bpm;
-      const secondsPerTick = secondsPerQuarter / divisions;
-
-      notes.forEach((note) => {
-        const startTime = startAt + note.startTick * secondsPerTick;
-        const endTime =
-          startAt + (note.startTick + note.duration) * secondsPerTick;
-        const sampleKey = midiToSampleKey(note.midi);
-        const buffer = sampleKey ? buffers.get(sampleKey) : undefined;
-        if (!buffer) return;
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        const gain = context.createGain();
-        // Adjust gain based on velocity (ghost notes have lower velocity)
-        const velocityGain = (note.velocity / 100) * 0.9;
-        gain.gain.setValueAtTime(velocityGain, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, endTime + 0.02);
-        source.connect(gain).connect(context.destination);
-        source.start(startTime);
-        playbackSourcesRef.current.push(source);
-      });
-
-      const totalGridTicks = measures * beatsPerMeasure * ticksPerBeat;
-      const secondsPerGridTick = secondsPerQuarter / ticksPerBeat;
-      startCursorAnimation(context, startAt, totalGridTicks, secondsPerGridTick);
-
-      const lastEnd = Math.max(
-        ...notes.map(
-          (note) => startAt + (note.startTick + note.duration) * secondsPerTick
-        )
-      );
-      setExportStatus({ key: "status.playing" });
-      const timer = window.setTimeout(() => {
-        stopCursorAnimation();
-        setExportStatus({ key: "status.playing.finished" });
-        playbackSourcesRef.current = [];
-        playbackTimeoutsRef.current = playbackTimeoutsRef.current.filter(
-          (id) => id !== timer
-        );
-      }, Math.max(0, (lastEnd - context.currentTime) * 1000) + 50);
-      playbackTimeoutsRef.current.push(timer);
-    } catch (error) {
-      console.error(error);
-      setExportStatus({ key: "status.playing.failed" });
-    }
-  };
 
   const applySample = useCallback(
     (mode: "rock" | "pop" | "shuffle") => {
@@ -864,19 +444,10 @@ export default function DrumGrid() {
         aria-label="Drum staff editor"
       >
       <header className="grid-header">
-        <div className="header-top">
-          <AuthButton />
-        </div>
         <div>
           <p className="eyebrow">{t("hero.eyebrow")}</p>
           <h1>{t("hero.title")}</h1>
           <p className="subtle">{t("hero.subtitle")}</p>
-          <div className="headline-actions">
-            <a className="cta" href="#editor">
-              {t("hero.cta")}
-            </a>
-            <span className="cta-note">{t("hero.ctaNote")}</span>
-          </div>
         </div>
       </header>
       <div className="ad-zone" aria-label="Advertisement">
@@ -995,11 +566,24 @@ export default function DrumGrid() {
               type="number"
               min={30}
               max={400}
-              value={bpm}
+              value={bpmInput}
               onChange={(event) => {
-                const next = Number(event.target.value);
-                if (Number.isNaN(next)) return;
-                setBpm(Math.min(400, Math.max(30, next)));
+                setBpmInput(event.target.value);
+              }}
+              onBlur={() => {
+                const next = Number(bpmInput);
+                if (Number.isNaN(next) || bpmInput === "") {
+                  setBpmInput(String(bpm));
+                  return;
+                }
+                const clamped = Math.min(400, Math.max(30, next));
+                setBpm(clamped);
+                setBpmInput(String(clamped));
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.currentTarget.blur();
+                }
               }}
             />
           </div>

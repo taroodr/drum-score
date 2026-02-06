@@ -38,6 +38,68 @@ a {
   text-decoration: none;
 }
 
+/* Site header */
+.site-header {
+  background: var(--paper);
+  border-bottom: 1px solid var(--paper-edge);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+body {
+  padding-top: 57px;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding-top: 49px;
+  }
+}
+
+.site-header-inner {
+  max-width: 1248px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.site-logo-icon {
+  font-size: 24px;
+}
+
+.site-logo-text {
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 480px) {
+  .site-header-inner {
+    padding: 10px 16px;
+  }
+
+  .site-logo {
+    font-size: 16px;
+  }
+
+  .site-logo-icon {
+    font-size: 20px;
+  }
+}
+
 button,
 input {
   font: inherit;
