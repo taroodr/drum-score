@@ -35,11 +35,15 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="footer-top">
         <div className="footer-links">
-          <a href="/en/faq">FAQ</a>
+          <a href={`/${locale}/blog`}>Blog</a>
           <span className="footer-sep">·</span>
-          <a href="/en/privacy">{t("footer.privacy")}</a>
+          <a href={`/${locale}/scores`}>Scores</a>
           <span className="footer-sep">·</span>
-          <a href="/en/contact">{t("footer.contact")}</a>
+          <a href={`/${locale}/faq`}>FAQ</a>
+          <span className="footer-sep">·</span>
+          <a href={`/${locale}/privacy`}>{t("footer.privacy")}</a>
+          <span className="footer-sep">·</span>
+          <a href={`/${locale}/contact`}>{t("footer.contact")}</a>
         </div>
         <div className="footer-language">
           <span className="select-icon" aria-hidden>

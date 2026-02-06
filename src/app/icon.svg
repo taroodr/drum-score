@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="drumGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d85a5a"/>
+      <stop offset="100%" style="stop-color:#b84545"/>
+    </linearGradient>
+    <linearGradient id="headGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5f5f2"/>
+      <stop offset="100%" style="stop-color:#e8e8e5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#1e242c"/>
+
+  <!-- Drum body -->
+  <ellipse cx="256" cy="300" rx="140" ry="60" fill="url(#drumGrad)"/>
+  <rect x="116" y="240" width="280" height="60" fill="url(#drumGrad)"/>
+  <ellipse cx="256" cy="240" rx="140" ry="60" fill="url(#headGrad)"/>
+
+  <!-- Drum rim -->
+  <ellipse cx="256" cy="240" rx="140" ry="60" fill="none" stroke="#c0c0c0" stroke-width="8"/>
+
+  <!-- Tension rods -->
+  <line x1="130" y1="260" x2="130" y2="290" stroke="#888" stroke-width="6" stroke-linecap="round"/>
+  <line x1="180" y1="280" x2="180" y2="310" stroke="#888" stroke-width="6" stroke-linecap="round"/>
+  <line x1="256" y1="290" x2="256" y2="320" stroke="#888" stroke-width="6" stroke-linecap="round"/>
+  <line x1="332" y1="280" x2="332" y2="310" stroke="#888" stroke-width="6" stroke-linecap="round"/>
+  <line x1="382" y1="260" x2="382" y2="290" stroke="#888" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Drumsticks -->
+  <g transform="rotate(-35, 256, 200)">
+    <rect x="300" y="120" width="12" height="140" rx="6" fill="#e8d4a8"/>
+    <ellipse cx="306" cy="120" rx="10" ry="14" fill="#f5ebe0"/>
+  </g>
+  <g transform="rotate(35, 256, 200)">
+    <rect x="200" y="120" width="12" height="140" rx="6" fill="#e8d4a8"/>
+    <ellipse cx="206" cy="120" rx="10" ry="14" fill="#f5ebe0"/>
+  </g>
+</svg>

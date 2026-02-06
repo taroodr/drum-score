@@ -16,6 +16,11 @@ export default function SiteHeader() {
           <span className="site-logo-icon">🥁</span>
           <span className="site-logo-text">Drum Score Lab</span>
         </Link>
+        <nav className="site-nav" aria-label="Primary">
+          <Link href={`/${locale}/blog`}>Blog</Link>
+          <Link href={`/${locale}/scores`}>Scores</Link>
+          <Link href={`/${locale}/faq`}>FAQ</Link>
+        </nav>
         <div className="header-actions">
           <button
             className="theme-toggle"
