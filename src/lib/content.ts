@@ -21,6 +21,7 @@ export type SampleScore = {
   updatedAt: string;
   bpm: number;
   style: string;
+  musicXmlPath?: string;
   en: LocalizedText & {
     pattern: string[];
     tips: string[];
@@ -101,36 +102,37 @@ export const tutorialArticles: TutorialArticle[] = [
 
 export const sampleScores: SampleScore[] = [
   {
-    slug: "smells-like-teen-spirit",
+    slug: "power-grunge-intro",
     updatedAt: "2026-02-06",
     bpm: 117,
-    style: "Rock",
+    style: "Grunge Rock",
+    musicXmlPath: "/samples/power-grunge-intro.musicxml",
     en: {
-      title: "Smells Like Teen Spirit Drum Score (Sample Groove)",
+      title: "Power Grunge Intro Drum Score (Sample Groove)",
       description:
-        "Sample drum score inspired by Smells Like Teen Spirit style groove with beginner-friendly sticking notes.",
+        "Public sample drum score for a 90s-style grunge intro groove with beginner-friendly sticking notes.",
       pattern: [
-        "Hi-hat: steady 8th notes",
+        "Closed hat: steady 8th notes with medium accents",
         "Snare: strong backbeat on 2 and 4",
-        "Kick: 1, 1+, 3, 3+",
+        "Kick: 1, 1+, 3, 3+ (repeat for intro drive)",
       ],
       tips: [
-        "Keep snare accents consistent before increasing speed.",
-        "Use small kick motion to avoid rushing sixteenth syncopation.",
+        "Keep backbeat height consistent before increasing tempo.",
+        "Use compact kick motion to avoid rushing the and-counts.",
       ],
     },
     ja: {
-      title: "Smells Like Teen Spirit ドラム譜（サンプル）",
+      title: "パワーグランジ・イントロ ドラム譜（サンプル）",
       description:
-        "Smells Like Teen Spirit風の定番ロックグルーヴを学べるサンプル譜面。",
+        "90年代グランジ系イントロを想定した公開用サンプル譜面。既存曲名なしで練習に使えます。",
       pattern: [
-        "ハイハット: 8分を一定に刻む",
-        "スネア: 2拍目と4拍目を強めに",
-        "キック: 1拍、1拍裏、3拍、3拍裏",
+        "クローズドハット: 8分を一定に刻む",
+        "スネア: 2拍目と4拍目を強く置く",
+        "キック: 1拍、1拍裏、3拍、3拍裏（イントロで反復）",
       ],
       tips: [
-        "先にスネアの重心を固めると全体が安定します。",
-        "16分のキックは小さく踏んで走りを防ぎます。",
+        "先にバックビートの高さをそろえると安定します。",
+        "キックは小さく踏んで裏拍の走りを防ぎます。",
       ],
     },
   },

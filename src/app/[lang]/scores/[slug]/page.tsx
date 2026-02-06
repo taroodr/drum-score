@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { notFound } from "next/navigation";
 import { getSampleScoreBySlug, sampleScores } from "@/lib/content";
+import VerovioViewer from "@/components/VerovioViewer";
 import { supportedLocales } from "@/lib/locales";
 
 type PageProps = {
@@ -40,6 +43,18 @@ export default async function ScoreDetailPage({ params }: PageProps) {
   }
   const lang = resolved.lang === "ja" ? "ja" : "en";
   const copy = lang === "ja" ? score.ja : score.en;
+  let musicXml: string | null = null;
+
+  if (score.musicXmlPath) {
+    try {
+      musicXml = await readFile(
+        join(process.cwd(), "public", score.musicXmlPath.replace(/^\//, "")),
+        "utf8"
+      );
+    } catch (error) {
+      console.error(`Failed to load score XML for ${score.slug}`, error);
+    }
+  }
 
   return (
     <main className="legal-page content-page">
@@ -62,6 +77,14 @@ export default async function ScoreDetailPage({ params }: PageProps) {
           ))}
         </ul>
       </section>
+      {musicXml && (
+        <section className="legal-section">
+          <h2>{lang === "ja" ? "譜面プレビュー" : "Score Preview"}</h2>
+          <div className="osmd-panel">
+            <VerovioViewer musicXml={musicXml} />
+          </div>
+        </section>
+      )}
     </main>
   );
 }
