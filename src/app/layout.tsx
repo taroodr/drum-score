@@ -51,6 +51,10 @@ export default function RootLayout({
           content="ca-pub-1785368984015044"
         />
         <meta
+          name="google-site-verification"
+          content="XGFaf5nE5HG3J687iKtj7MwbRGs_9RklbwMSeyHIa0M"
+        />
+        <meta
           name="keywords"
           content="drum notation, drum score, drum notation editor, drum score builder, sheet music editor, MIDI export"
         />
