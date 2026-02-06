@@ -294,7 +294,7 @@ export default function DrumGrid() {
     subdivisionsByBeat,
     notes,
     setMeasures,
-    setSubdivisionsByBeat: (subs) => setSubdivisionsByBeat(subs),
+    setSubdivisionsByBeat,
     setNotes,
     createDefaultNotes,
     deserializeNotes,
