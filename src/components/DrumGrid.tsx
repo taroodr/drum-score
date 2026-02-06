@@ -13,6 +13,10 @@ import { buildMidiFromMusicXml, parseMidiNotesFromMusicXml } from "@/lib/midi";
 import { loadDrumSamples, midiToSampleKey } from "@/lib/drumSamples";
 import { useLanguage } from "@/components/LanguageProvider";
 import VerovioViewer from "@/components/VerovioViewer";
+import AuthButton from "@/components/AuthButton";
+import { useAuth } from "@/components/AuthProvider";
+import ScoreList from "@/components/ScoreList";
+import { saveScore, type CloudScore, type SavedGrid as CloudSavedGrid } from "@/lib/firestore";
 
 const STORAGE_KEY = "drum-score:v1";
 const beatsPerMeasure = 4;
@@ -221,6 +225,11 @@ export default function DrumGrid() {
   const [exportStatus, setExportStatus] = useState<
     { key: string; detail?: string } | null
   >(null);
+  const [scoreTitle, setScoreTitle] = useState("");
+  const [currentScoreId, setCurrentScoreId] = useState<string | null>(null);
+  const [showScoreList, setShowScoreList] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const osmdExportRef = useRef<HTMLDivElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sampleBuffersRef = useRef<Map<string, AudioBuffer> | null>(null);
@@ -260,6 +269,7 @@ export default function DrumGrid() {
   }, [cellSize, subdivisionsByBeat]);
 
   const { locale, t } = useLanguage();
+  const { user } = useAuth();
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -406,8 +416,8 @@ export default function DrumGrid() {
     });
   };
 
-  const handleSave = () => {
-    const payload: SavedGrid = {
+  const buildSavePayload = useCallback((): SavedGrid => {
+    return {
       version: 8,
       measures,
       beatsPerMeasure,
@@ -423,10 +433,68 @@ export default function DrumGrid() {
         };
       }),
     };
+  }, [measures, subdivisionsByBeat, notes]);
+
+  const handleSave = () => {
+    const payload = buildSavePayload();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     setLastSavedAt({
       key: "status.saved",
       detail: new Date().toLocaleString(locale),
+    });
+  };
+
+  const handleCloudSave = async () => {
+    if (!user) return;
+    const title = scoreTitle.trim() || t("cloud.untitled");
+    setIsSaving(true);
+    try {
+      const payload = buildSavePayload();
+      const id = await saveScore(user.uid, title, payload as CloudSavedGrid, currentScoreId || undefined);
+      if (id) {
+        setCurrentScoreId(id);
+        setScoreTitle(title);
+        setLastSavedAt({
+          key: "status.cloud.saved",
+          detail: title,
+        });
+      } else {
+        setLastSavedAt({ key: "status.cloud.saveFailed" });
+      }
+    } finally {
+      setIsSaving(false);
+      setShowSaveDialog(false);
+    }
+  };
+
+  const handleCloudLoad = (score: CloudScore) => {
+    const parsed = score.data;
+    const safeMeasures = clampMeasures(parsed.measures ?? 2);
+    const totalBeats = safeMeasures * beatsPerMeasure;
+    const fallbackSubdivisions =
+      typeof parsed.subdivisions === "number" ? parsed.subdivisions : 4;
+    const safeSubdivisionsByBeat =
+      parsed.subdivisionsPerBeat?.length === totalBeats
+        ? parsed.subdivisionsPerBeat
+        : parsed.subdivisionsPerMeasure?.length === safeMeasures
+          ? Array.from({ length: totalBeats }, (_, index) => {
+              const measureIndex = Math.floor(index / beatsPerMeasure);
+              return parsed.subdivisionsPerMeasure?.[measureIndex] ?? 4;
+            })
+          : Array.from({ length: totalBeats }, () => fallbackSubdivisions);
+    const filtered = deserializeNotes(
+      parsed as SavedGrid,
+      safeMeasures,
+      fallbackSubdivisions
+    );
+    setMeasures(safeMeasures);
+    setSubdivisionsByBeat(safeSubdivisionsByBeat);
+    setNotes(filtered);
+    setCurrentScoreId(score.id);
+    setScoreTitle(score.title);
+    setLastSavedAt({
+      key: "status.cloud.loaded",
+      detail: score.title,
     });
   };
 
@@ -796,6 +864,9 @@ export default function DrumGrid() {
         aria-label="Drum staff editor"
       >
       <header className="grid-header">
+        <div className="header-top">
+          <AuthButton />
+        </div>
         <div>
           <p className="eyebrow">{t("hero.eyebrow")}</p>
           <h1>{t("hero.title")}</h1>
@@ -826,6 +897,16 @@ export default function DrumGrid() {
               {t("controls.storage.clear")}
             </button>
           </div>
+          {user && (
+            <div className="button-row" style={{ marginTop: 8 }}>
+              <button type="button" onClick={() => setShowSaveDialog(true)}>
+                {t("cloud.save")}
+              </button>
+              <button type="button" onClick={() => setShowScoreList(true)} className="ghost">
+                {t("cloud.load")}
+              </button>
+            </div>
+          )}
           <span className="helper">
             {lastSavedAt
               ? `${t("status.prefix")} ${t(lastSavedAt.key, lastSavedAt.detail ? { value: lastSavedAt.detail } : undefined)}`
@@ -1157,6 +1238,54 @@ export default function DrumGrid() {
         <VerovioViewer musicXml={musicXml} />
       </div>
       </section>
+
+      {showSaveDialog && (
+        <div className="modal-overlay" onClick={() => setShowSaveDialog(false)}>
+          <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{t("cloud.saveTitle")}</h3>
+              <button type="button" className="modal-close" onClick={() => setShowSaveDialog(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              <label className="save-dialog-label">
+                {t("cloud.scoreName")}
+                <input
+                  type="text"
+                  className="save-dialog-input"
+                  value={scoreTitle}
+                  onChange={(e) => setScoreTitle(e.target.value)}
+                  placeholder={t("cloud.untitled")}
+                  autoFocus
+                />
+              </label>
+              <div className="save-dialog-actions">
+                <button
+                  type="button"
+                  onClick={handleCloudSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? t("cloud.saving") : t("cloud.save")}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => setShowSaveDialog(false)}
+                >
+                  {t("cloud.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ScoreList
+        isOpen={showScoreList}
+        onClose={() => setShowScoreList(false)}
+        onSelect={handleCloudLoad}
+      />
     </div>
   );
 }

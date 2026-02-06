@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import SiteFooter from "@/components/SiteFooter";
 import { supportedLocales, type SupportedLocale } from "@/lib/locales";
 
@@ -121,16 +122,18 @@ export default async function LangLayout({
   };
   return (
     <LanguageProvider initialLocale={lang}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
-      />
-      {children}
-      <SiteFooter />
+      <AuthProvider>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppJsonLd) }}
+        />
+        {children}
+        <SiteFooter />
+      </AuthProvider>
     </LanguageProvider>
   );
 }
