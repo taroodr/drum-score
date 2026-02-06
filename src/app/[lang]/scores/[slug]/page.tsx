@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { notFound } from "next/navigation";
 import { getSampleScoreBySlug, sampleScores } from "@/lib/content";
+import CopyScoreToEditorButton from "@/components/CopyScoreToEditorButton";
 import VerovioViewer from "@/components/VerovioViewer";
 import { supportedLocales } from "@/lib/locales";
 
@@ -80,6 +81,9 @@ export default async function ScoreDetailPage({ params }: PageProps) {
       {musicXml && (
         <section className="legal-section">
           <h2>{lang === "ja" ? "譜面プレビュー" : "Score Preview"}</h2>
+          <div className="button-row">
+            <CopyScoreToEditorButton lang={resolved.lang} musicXml={musicXml} />
+          </div>
           <div className="osmd-panel">
             <VerovioViewer musicXml={musicXml} />
           </div>

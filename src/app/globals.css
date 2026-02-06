@@ -791,6 +791,22 @@ h1 {
   box-shadow: none;
 }
 
+.score-edit-button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #3a4250;
+  background: #2a313a;
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.score-edit-button:hover {
+  transform: translateY(-1px);
+}
+
 .select-row {
   display: flex;
   align-items: center;
@@ -1772,4 +1788,14 @@ h1 {
 
 [data-theme="light"] .controls button.ghost:hover:not(:disabled) {
   background: #f0f0ea;
+}
+
+[data-theme="light"] .score-edit-button {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+[data-theme="light"] .score-edit-button:hover {
+  background: #333;
 }
