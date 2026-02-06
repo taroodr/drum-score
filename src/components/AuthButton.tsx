@@ -1,14 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { signInWithGoogle, signOut, isConfigured } from "@/lib/auth";
+import { signInWithGoogle, signOut, isFirebaseConfigured } from "@/lib/auth";
 import { useLanguage } from "@/components/LanguageProvider";
 
 export default function AuthButton() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
+  const [configured, setConfigured] = useState(false);
 
-  if (!isConfigured) {
+  useEffect(() => {
+    setConfigured(isFirebaseConfigured());
+  }, []);
+
+  if (!configured) {
     return null;
   }
 

@@ -5,7 +5,7 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { getFirebaseAuth, isConfigured } from "./firebase";
+import { getFirebaseAuth, isFirebaseConfigured } from "./firebase";
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -43,5 +43,5 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-export { isConfigured };
+export { isFirebaseConfigured };
 export type { User };
