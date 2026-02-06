@@ -154,3 +154,37 @@ export async function deleteScore(
     return false;
   }
 }
+
+export async function duplicateScore(
+  userId: string,
+  scoreId: string,
+  newTitle: string
+): Promise<CloudScore | null> {
+  const scoresRef = getScoresCollection(userId);
+  if (!scoresRef) return null;
+
+  try {
+    const docRef = doc(scoresRef, scoreId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+
+    const originalData = docSnap.data() as FirestoreScore;
+    const newDocRef = await addDoc(scoresRef, {
+      title: newTitle,
+      data: originalData.data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      id: newDocRef.id,
+      title: newTitle,
+      data: originalData.data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  } catch (error) {
+    console.error("Failed to duplicate score:", error);
+    return null;
+  }
+}

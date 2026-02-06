@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useLanguage } from "@/components/LanguageProvider";
-import { listScores, deleteScore, type CloudScore } from "@/lib/firestore";
+import { listScores, deleteScore, duplicateScore, type CloudScore } from "@/lib/firestore";
 
 type Props = {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
   const [scores, setScores] = useState<CloudScore[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -73,6 +74,25 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
     }
   };
 
+  const handleDuplicate = async (score: CloudScore) => {
+    if (!user) return;
+
+    setDuplicatingId(score.id);
+    try {
+      const newTitle = `${score.title} (${t("cloud.copy")})`;
+      const newScore = await duplicateScore(user.uid, score.id, newTitle);
+      if (newScore && isMountedRef.current) {
+        setScores((prev) => [newScore, ...prev]);
+      }
+    } catch (error) {
+      console.error("Failed to duplicate score:", error);
+    } finally {
+      if (isMountedRef.current) {
+        setDuplicatingId(null);
+      }
+    }
+  };
+
   const handleSelect = (score: CloudScore) => {
     onSelect(score);
     onClose();
@@ -107,6 +127,15 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
                     <span className="score-date">
                       {score.updatedAt.toLocaleDateString(locale)}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="score-action"
+                    onClick={() => handleDuplicate(score)}
+                    disabled={duplicatingId === score.id}
+                    title={t("cloud.duplicate")}
+                  >
+                    {duplicatingId === score.id ? "..." : "⧉"}
                   </button>
                   <button
                     type="button"

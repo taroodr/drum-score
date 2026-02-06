@@ -1136,6 +1136,7 @@ h1 {
   flex-shrink: 0;
 }
 
+.score-action,
 .score-delete {
   background: none;
   border: none;
@@ -1148,11 +1149,17 @@ h1 {
   transition: all 0.15s ease;
 }
 
+.score-action:hover {
+  background: rgba(27, 27, 27, 0.1);
+  color: var(--ink);
+}
+
 .score-delete:hover {
   background: rgba(209, 74, 43, 0.1);
   color: var(--accent);
 }
 
+.score-action:disabled,
 .score-delete:disabled {
   opacity: 0.5;
   cursor: not-allowed;
