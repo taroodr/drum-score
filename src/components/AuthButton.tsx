@@ -11,7 +11,13 @@ export default function AuthButton() {
   const [configured, setConfigured] = useState(false);
 
   useEffect(() => {
-    setConfigured(isFirebaseConfigured());
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    console.log("[AuthButton] API Key:", apiKey ? apiKey.substring(0, 10) + "..." : "NOT SET");
+    console.log("[AuthButton] Project ID:", projectId || "NOT SET");
+    const result = isFirebaseConfigured();
+    console.log("[AuthButton] isFirebaseConfigured:", result);
+    setConfigured(result);
   }, []);
 
   if (!configured) {
