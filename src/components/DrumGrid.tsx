@@ -203,6 +203,7 @@ export default function DrumGrid() {
   const [samplePreset, setSamplePreset] = useState<
     "rock" | "pop" | "shuffle" | ""
   >("rock");
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [subdivisionsByBeat, setSubdivisionsByBeat] = useState<number[]>(
     () => Array.from({ length: 2 * beatsPerMeasure }, () => 4)
   );
@@ -251,6 +252,7 @@ export default function DrumGrid() {
 
   // Audio playback hook
   const {
+    isPlaying,
     playMidi,
     stopPlayback,
     exportStatus,
@@ -486,81 +488,19 @@ export default function DrumGrid() {
         </div>
       </div>
 
-      <div className="toolbar">
-        <div className="toolbar-group">
-          <label>{t("controls.noteType")}</label>
-          <div className="note-type-selector">
-            <button
-              type="button"
-              className={noteType === "normal" ? "active" : ""}
-              onClick={() => setNoteType("normal")}
-              title={t("controls.noteType.normal")}
-            >
-              {t("controls.noteType.normal")}
-            </button>
-            <button
-              type="button"
-              className={noteType === "ghost" ? "active" : ""}
-              onClick={() => setNoteType("ghost")}
-              title={t("controls.noteType.ghost")}
-            >
-              {t("controls.noteType.ghost")}
-            </button>
-            <button
-              type="button"
-              className={noteType === "accent" ? "active" : ""}
-              onClick={() => setNoteType("accent")}
-              title={t("controls.noteType.accent")}
-            >
-              {t("controls.noteType.accent")}
-            </button>
-            <button
-              type="button"
-              className={noteType === "flam" ? "active" : ""}
-              onClick={() => setNoteType("flam")}
-              title={t("controls.noteType.flam")}
-            >
-              {t("controls.noteType.flam")}
-            </button>
-          </div>
-        </div>
-        <div className="toolbar-group">
-          <label htmlFor="samples-select">{t("controls.samples")}</label>
-          <div className="measure-input">
-            <select
-              id="samples-select"
-              value={samplePreset}
-              onChange={(event) => {
-                const value = event.target.value as
-                  | "rock"
-                  | "pop"
-                  | "shuffle"
-                  | "";
-                if (!value) return;
-                applySample(value);
-                setSamplePreset(value);
-              }}
-            >
-              <option value="">{t("controls.samples.helper")}</option>
-              <option value="rock">{t("controls.samples.rock")}</option>
-              <option value="pop">{t("controls.samples.pop")}</option>
-              <option value="shuffle">{t("controls.samples.shuffle")}</option>
-            </select>
-          </div>
-        </div>
-        <div className="toolbar-group">
-          <div className="button-row">
-            <button type="button" className="ghost" onClick={playMidi}>
-              {t("controls.playback.play")}
-            </button>
-            <button type="button" className="ghost" onClick={stopPlayback}>
-              {t("controls.playback.stop")}
-            </button>
-          </div>
-        </div>
-        <div className="toolbar-group">
-          <label htmlFor="bpm-input">{t("controls.bpm")}</label>
-          <div className="measure-input">
+      {/* Playback Controls - Primary Actions */}
+      <div className="playback-bar">
+        <div className="playback-controls">
+          <button
+            type="button"
+            className={`play-btn ${isPlaying ? "playing" : ""}`}
+            onClick={isPlaying ? stopPlayback : playMidi}
+            title={isPlaying ? t("controls.playback.stop") : t("controls.playback.play")}
+          >
+            {isPlaying ? "⏹" : "▶"}
+          </button>
+          <div className="bpm-control">
+            <label htmlFor="bpm-input">{t("controls.bpm")}</label>
             <input
               id="bpm-input"
               type="number"
@@ -588,52 +528,140 @@ export default function DrumGrid() {
             />
           </div>
         </div>
-        <div className="toolbar-group">
-          <label htmlFor="zoom-input">Zoom</label>
-          <div className="measure-input">
-            <select
-              id="zoom-input"
-              value={cellSize}
-              onChange={(event) => setCellSize(Number(event.target.value))}
+        <div className="playback-status">
+          {exportStatus && (
+            <span className="status-text">{t(exportStatus.key)}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Editor Toolbar */}
+      <div className="toolbar">
+        <div className="toolbar-section">
+          <div className="toolbar-group">
+            <label>{t("controls.noteType")}</label>
+            <div className="note-type-selector">
+              <button
+                type="button"
+                className={noteType === "normal" ? "active" : ""}
+                onClick={() => setNoteType("normal")}
+                title={t("controls.noteType.normal")}
+              >
+                {t("controls.noteType.normal")}
+              </button>
+              <button
+                type="button"
+                className={noteType === "ghost" ? "active" : ""}
+                onClick={() => setNoteType("ghost")}
+                title={t("controls.noteType.ghost")}
+              >
+                {t("controls.noteType.ghost")}
+              </button>
+              <button
+                type="button"
+                className={noteType === "accent" ? "active" : ""}
+                onClick={() => setNoteType("accent")}
+                title={t("controls.noteType.accent")}
+              >
+                {t("controls.noteType.accent")}
+              </button>
+              <button
+                type="button"
+                className={noteType === "flam" ? "active" : ""}
+                onClick={() => setNoteType("flam")}
+                title={t("controls.noteType.flam")}
+              >
+                {t("controls.noteType.flam")}
+              </button>
+            </div>
+          </div>
+          <div className="toolbar-group">
+            <label htmlFor="samples-select">{t("controls.samples")}</label>
+            <div className="measure-input">
+              <select
+                id="samples-select"
+                value={samplePreset}
+                onChange={(event) => {
+                  const value = event.target.value as
+                    | "rock"
+                    | "pop"
+                    | "shuffle"
+                    | "";
+                  if (!value) return;
+                  applySample(value);
+                  setSamplePreset(value);
+                }}
+              >
+                <option value="">{t("controls.samples.helper")}</option>
+                <option value="rock">{t("controls.samples.rock")}</option>
+                <option value="pop">{t("controls.samples.pop")}</option>
+                <option value="shuffle">{t("controls.samples.shuffle")}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="toolbar-section">
+          <div className="toolbar-group">
+            <label htmlFor="zoom-input">Zoom</label>
+            <div className="measure-input">
+              <select
+                id="zoom-input"
+                value={cellSize}
+                onChange={(event) => setCellSize(Number(event.target.value))}
+              >
+                <option value={18}>80%</option>
+                <option value={22}>90%</option>
+                <option value={24}>100%</option>
+                <option value={28}>115%</option>
+                <option value={32}>130%</option>
+              </select>
+            </div>
+          </div>
+          <div className="toolbar-group">
+            <label>{t("controls.measures")}</label>
+            <div className="measure-buttons">
+              <button
+                type="button"
+                className="measure-btn"
+                onClick={() => handleMeasureChange(measures - 1)}
+                disabled={measures <= 1}
+                title={t("controls.measures.remove")}
+              >
+                −
+              </button>
+              <span className="measure-count">{measures}</span>
+              <button
+                type="button"
+                className="measure-btn"
+                onClick={() => handleMeasureChange(measures + 1)}
+                disabled={measures >= 32}
+                title={t("controls.measures.add")}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="toolbar-group export-group">
+            <button
+              type="button"
+              className="export-toggle"
+              onClick={() => setShowExportMenu(!showExportMenu)}
             >
-              <option value={18}>80%</option>
-              <option value={22}>90%</option>
-              <option value={24}>100%</option>
-              <option value={28}>115%</option>
-              <option value={32}>130%</option>
-            </select>
-          </div>
-        </div>
-        <div className="toolbar-group">
-          <label htmlFor="measure-input">{t("controls.measures")}</label>
-          <div className="measure-input">
-            <input
-              id="measure-input"
-              type="number"
-              min={1}
-              max={32}
-              value={measures}
-              onChange={(event) =>
-                handleMeasureChange(Number(event.target.value))
-              }
-            />
-            <span className="measure-caption">
-              {t("controls.measures.range")}
-            </span>
-          </div>
-        </div>
-        <div className="toolbar-group">
-          <label>{t("controls.export")}</label>
-          <div className="button-row">
-            <button type="button" className="ghost" onClick={exportPdf}>
-              {t("controls.export.pdf")}
+              {t("controls.export")} ▾
             </button>
-            <button type="button" className="ghost" onClick={exportPng}>
-              {t("controls.export.image")}
-            </button>
-            <button type="button" className="ghost" onClick={exportMidi}>
-              {t("controls.export.midi")}
-            </button>
+            {showExportMenu && (
+              <div className="export-menu">
+                <button type="button" onClick={() => { exportPdf(); setShowExportMenu(false); }}>
+                  {t("controls.export.pdf")}
+                </button>
+                <button type="button" onClick={() => { exportPng(); setShowExportMenu(false); }}>
+                  {t("controls.export.image")}
+                </button>
+                <button type="button" onClick={() => { exportMidi(); setShowExportMenu(false); }}>
+                  {t("controls.export.midi")}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
