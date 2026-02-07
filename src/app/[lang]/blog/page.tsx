@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";
 import { tutorialArticles } from "@/lib/content";
 
 type PageProps = {
@@ -8,7 +8,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return supportedLocales.map((lang) => ({ lang }));
+  return routeLocales.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -22,8 +22,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         ? "ドラム譜の読み方や8ビート練習法など、検索ニーズに合わせたチュートリアル記事一覧。"
         : "Tutorial articles for drum notation reading, 8 beat practice, and groove building.",
     alternates: {
-      canonical: `/${resolved.lang}/blog`,
-      languages: Object.fromEntries(supportedLocales.map((code) => [code, `/${code}/blog`])),
+      canonical: localePath(resolved.lang, "/blog"),
+      languages: Object.fromEntries(supportedLocales.map((code) => [code, localePath(code, "/blog")])),
     },
   };
 }

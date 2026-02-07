@@ -3,7 +3,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return supportedLocales.map((lang) => ({ lang }));
+  return routeLocales.map((lang) => ({ lang }));
 }
 
 const content = {
@@ -185,7 +185,7 @@ export default async function PrivacyPage({ params }: PageProps) {
   const copy = content[resolved.lang === "ja" ? "ja" : "en"];
   return (
     <main className="legal-page">
-      <link rel="canonical" href={`https://drum-score.pages.dev/${lang}/privacy`} />
+      <link rel="canonical" href={`https://drum-score.pages.dev${localePath(lang, "/privacy")}`} />
       <h1>{copy.title}</h1>
       <p className="legal-updated">{copy.updated}</p>
       <p className="legal-intro">{copy.intro}</p>
@@ -290,4 +290,4 @@ export default async function PrivacyPage({ params }: PageProps) {
     </main>
   );
 }
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";

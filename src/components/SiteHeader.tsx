@@ -4,6 +4,7 @@ import AuthButton from "@/components/AuthButton";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import Link from "next/link";
+import { localePath } from "@/lib/locales";
 
 export default function SiteHeader() {
   const { locale } = useLanguage();
@@ -12,14 +13,14 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <Link href={`/${locale}`} className="site-logo">
+        <Link href={localePath(locale)} className="site-logo">
           <span className="site-logo-icon">🥁</span>
           <span className="site-logo-text">Drum Score Lab</span>
         </Link>
         <nav className="site-nav" aria-label="Primary">
-          <Link href={`/${locale}/blog`}>Blog</Link>
-          <Link href={`/${locale}/scores`}>Scores</Link>
-          <Link href={`/${locale}/faq`}>FAQ</Link>
+          <Link href={localePath(locale, "/blog")}>Blog</Link>
+          <Link href={localePath(locale, "/scores")}>Scores</Link>
+          <Link href={localePath(locale, "/faq")}>FAQ</Link>
         </nav>
         <div className="header-actions">
           <button

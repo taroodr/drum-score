@@ -4,7 +4,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { supportedLocales, type SupportedLocale } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath, type SupportedLocale } from "@/lib/locales";
 
 const buildMetadata = (lang: "en" | "ja"): Metadata => {
   if (lang === "ja") {
@@ -27,7 +27,7 @@ const buildMetadata = (lang: "en" | "ja"): Metadata => {
       },
       alternates: {
         languages: {
-          en: "/en",
+          en: "/",
           ja: "/ja",
         },
       },
@@ -52,25 +52,9 @@ const buildMetadata = (lang: "en" | "ja"): Metadata => {
       images: ["/ogp.svg"],
     },
     alternates: {
-      languages: {
-        nl: "/nl",
-        id: "/id",
-        de: "/de",
-        en: "/en",
-        es: "/es",
-        fr: "/fr",
-        it: "/it",
-        pl: "/pl",
-        pt: "/pt",
-        vi: "/vi",
-        tr: "/tr",
-        ru: "/ru",
-        ar: "/ar",
-        th: "/th",
-        ja: "/ja",
-        zh: "/zh",
-        ko: "/ko",
-      },
+      languages: Object.fromEntries(
+        supportedLocales.map((code) => [code, localePath(code)])
+      ),
     },
   };
 };
@@ -82,13 +66,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const resolved = await params;
   const lang = resolved.lang === "ja" ? "ja" : "en";
-  const canonical = `/${resolved.lang}`;
   return {
     ...buildMetadata(lang),
     alternates: {
-      canonical,
+      canonical: localePath(resolved.lang),
       languages: Object.fromEntries(
-        supportedLocales.map((code) => [code, `/${code}`])
+        supportedLocales.map((code) => [code, localePath(code)])
       ),
     },
   };
@@ -112,7 +95,7 @@ export default async function LangLayout({
     applicationCategory: "MultimediaApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    url: `https://drum-score.pages.dev/${lang}`,
+    url: `https://drum-score.pages.dev${localePath(lang)}`,
   };
   const webAppJsonLd = {
     "@context": "https://schema.org",
@@ -120,7 +103,7 @@ export default async function LangLayout({
     name: "Drum Score Lab",
     applicationCategory: "MusicApplication",
     operatingSystem: "Web",
-    url: `https://drum-score.pages.dev/${lang}`,
+    url: `https://drum-score.pages.dev${localePath(lang)}`,
   };
   return (
     <ThemeProvider>

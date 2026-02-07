@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTutorialBySlug, tutorialArticles } from "@/lib/content";
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";
 
 type PageProps = {
   params: Promise<{ lang: string; slug: string }>;
 };
 
 export function generateStaticParams() {
-  return supportedLocales.flatMap((lang) =>
+  return routeLocales.flatMap((lang) =>
     tutorialArticles.map((article) => ({ lang, slug: article.slug }))
   );
 }
@@ -24,9 +24,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: copy.title,
     description: copy.description,
     alternates: {
-      canonical: `/${resolved.lang}/blog/${resolved.slug}`,
+      canonical: localePath(resolved.lang, `/blog/${resolved.slug}`),
       languages: Object.fromEntries(
-        supportedLocales.map((code) => [code, `/${code}/blog/${resolved.slug}`])
+        supportedLocales.map((code) => [code, localePath(code, `/blog/${resolved.slug}`)])
       ),
     },
   };

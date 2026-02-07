@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { sampleScores, tutorialArticles } from "@/lib/content";
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, localePath } from "@/lib/locales";
 
 export const dynamic = "force-static";
 
@@ -9,38 +9,39 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
 
   supportedLocales.forEach((lang) => {
+    const prefix = localePath(lang);
     entries.push({
-      url: `${base}/${lang}`,
+      url: `${base}${prefix}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
     });
     entries.push({
-      url: `${base}/${lang}/faq`,
+      url: `${base}${localePath(lang, "/faq")}`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     });
     entries.push({
-      url: `${base}/${lang}/blog`,
+      url: `${base}${localePath(lang, "/blog")}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     });
     entries.push({
-      url: `${base}/${lang}/scores`,
+      url: `${base}${localePath(lang, "/scores")}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     });
     entries.push({
-      url: `${base}/${lang}/privacy`,
+      url: `${base}${localePath(lang, "/privacy")}`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
     });
     entries.push({
-      url: `${base}/${lang}/contact`,
+      url: `${base}${localePath(lang, "/contact")}`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.3,
@@ -48,7 +49,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     tutorialArticles.forEach((article) => {
       entries.push({
-        url: `${base}/${lang}/blog/${article.slug}`,
+        url: `${base}${localePath(lang, `/blog/${article.slug}`)}`,
         lastModified: new Date(article.updatedAt),
         changeFrequency: "monthly",
         priority: 0.8,
@@ -57,7 +58,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     sampleScores.forEach((score) => {
       entries.push({
-        url: `${base}/${lang}/scores/${score.slug}`,
+        url: `${base}${localePath(lang, `/scores/${score.slug}`)}`,
         lastModified: new Date(score.updatedAt),
         changeFrequency: "monthly",
         priority: 0.8,

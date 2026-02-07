@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { parseMidiNotesFromMusicXml } from "@/lib/midi";
+import { localePath } from "@/lib/locales";
 
 const STORAGE_KEY = "drum-score:v1";
 const BEATS_PER_MEASURE = 4;
@@ -79,7 +80,7 @@ export default function CopyScoreToEditorButton({ lang, musicXml }: Props) {
       };
 
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      router.push(`/${lang}#editor`);
+      router.push(`${localePath(lang)}#editor`);
     } catch (error) {
       console.error("Failed to copy score to editor", error);
     }

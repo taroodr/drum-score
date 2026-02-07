@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useLanguage } from "@/components/LanguageProvider";
+import { localePath } from "@/lib/locales";
 
 const languageOptions = [
   { code: "nl", label: "Nederlands" },
@@ -35,15 +36,15 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="footer-top">
         <div className="footer-links">
-          <a href={`/${locale}/blog`}>Blog</a>
+          <a href={localePath(locale, "/blog")}>Blog</a>
           <span className="footer-sep">·</span>
-          <a href={`/${locale}/scores`}>Scores</a>
+          <a href={localePath(locale, "/scores")}>Scores</a>
           <span className="footer-sep">·</span>
-          <a href={`/${locale}/faq`}>FAQ</a>
+          <a href={localePath(locale, "/faq")}>FAQ</a>
           <span className="footer-sep">·</span>
-          <a href={`/${locale}/privacy`}>{t("footer.privacy")}</a>
+          <a href={localePath(locale, "/privacy")}>{t("footer.privacy")}</a>
           <span className="footer-sep">·</span>
-          <a href={`/${locale}/contact`}>{t("footer.contact")}</a>
+          <a href={localePath(locale, "/contact")}>{t("footer.contact")}</a>
         </div>
         <div className="footer-language">
           <span className="select-icon" aria-hidden>
@@ -59,8 +60,9 @@ export default function SiteFooter() {
               )?.code;
               if (!code) return;
               setLocale(code);
-              if (pathname !== `/${code}`) {
-                router.push(`/${code}`);
+              const target = localePath(code);
+              if (pathname !== target) {
+                router.push(target);
               }
             }}
             aria-label="Language selector"

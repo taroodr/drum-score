@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { sampleScores } from "@/lib/content";
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";
 
 type PageProps = {
   params: Promise<{ lang: string }>;
 };
 
 export function generateStaticParams() {
-  return supportedLocales.map((lang) => ({ lang }));
+  return routeLocales.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -22,8 +22,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         ? "人気曲検索向けのサンプルドラム譜ページ一覧。曲ごとのグルーヴ構成と練習ポイントを掲載。"
         : "Sample drum score pages for popular songs, with groove patterns and practice tips.",
     alternates: {
-      canonical: `/${resolved.lang}/scores`,
-      languages: Object.fromEntries(supportedLocales.map((code) => [code, `/${code}/scores`])),
+      canonical: localePath(resolved.lang, "/scores"),
+      languages: Object.fromEntries(supportedLocales.map((code) => [code, localePath(code, "/scores")])),
     },
   };
 }

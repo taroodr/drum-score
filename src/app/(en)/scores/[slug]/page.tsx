@@ -5,45 +5,44 @@ import { notFound } from "next/navigation";
 import { getSampleScoreBySlug, sampleScores } from "@/lib/content";
 import CopyScoreToEditorButton from "@/components/CopyScoreToEditorButton";
 import VerovioViewer from "@/components/VerovioViewer";
-import { supportedLocales, routeLocales, localePath } from "@/lib/locales";
+import { supportedLocales, localePath } from "@/lib/locales";
 
 type PageProps = {
-  params: Promise<{ lang: string; slug: string }>;
+  params: Promise<{ slug: string }>;
 };
 
 export function generateStaticParams() {
-  return routeLocales.flatMap((lang) =>
-    sampleScores.map((score) => ({ lang, slug: score.slug }))
-  );
+  return sampleScores.map((score) => ({ slug: score.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const resolved = await params;
-  const score = getSampleScoreBySlug(resolved.slug);
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const score = getSampleScoreBySlug(slug);
   if (!score) return {};
-  const lang = resolved.lang === "ja" ? "ja" : "en";
-  const copy = lang === "ja" ? score.ja : score.en;
 
   return {
-    title: copy.title,
-    description: copy.description,
+    title: score.en.title,
+    description: score.en.description,
     alternates: {
-      canonical: localePath(resolved.lang, `/scores/${resolved.slug}`),
+      canonical: `/scores/${slug}`,
       languages: Object.fromEntries(
-        supportedLocales.map((code) => [code, localePath(code, `/scores/${resolved.slug}`)])
+        supportedLocales.map((code) => [
+          code,
+          localePath(code, `/scores/${slug}`),
+        ])
       ),
     },
   };
 }
 
 export default async function ScoreDetailPage({ params }: PageProps) {
-  const resolved = await params;
-  const score = getSampleScoreBySlug(resolved.slug);
+  const { slug } = await params;
+  const score = getSampleScoreBySlug(slug);
   if (!score) {
     notFound();
   }
-  const lang = resolved.lang === "ja" ? "ja" : "en";
-  const copy = lang === "ja" ? score.ja : score.en;
   let musicXml: string | null = null;
 
   if (score.musicXmlPath) {
@@ -59,30 +58,32 @@ export default async function ScoreDetailPage({ params }: PageProps) {
 
   return (
     <main className="legal-page content-page">
-      <h1>{copy.title}</h1>
-      <p className="legal-updated">{score.style} | {score.bpm} BPM | Updated: {score.updatedAt}</p>
-      <p className="legal-intro">{copy.description}</p>
+      <h1>{score.en.title}</h1>
+      <p className="legal-updated">
+        {score.style} | {score.bpm} BPM | Updated: {score.updatedAt}
+      </p>
+      <p className="legal-intro">{score.en.description}</p>
       <section className="legal-section">
-        <h2>{lang === "ja" ? "基本パターン" : "Core Pattern"}</h2>
+        <h2>Core Pattern</h2>
         <ul>
-          {copy.pattern.map((item) => (
+          {score.en.pattern.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
       <section className="legal-section">
-        <h2>{lang === "ja" ? "練習ポイント" : "Practice Tips"}</h2>
+        <h2>Practice Tips</h2>
         <ul>
-          {copy.tips.map((tip) => (
+          {score.en.tips.map((tip) => (
             <li key={tip}>{tip}</li>
           ))}
         </ul>
       </section>
       {musicXml && (
         <section className="legal-section">
-          <h2>{lang === "ja" ? "譜面プレビュー" : "Score Preview"}</h2>
+          <h2>Score Preview</h2>
           <div className="button-row">
-            <CopyScoreToEditorButton lang={resolved.lang} musicXml={musicXml} />
+            <CopyScoreToEditorButton lang="en" musicXml={musicXml} />
           </div>
           <div className="osmd-panel">
             <VerovioViewer musicXml={musicXml} />

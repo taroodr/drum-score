@@ -3,7 +3,7 @@ type PageProps = {
 };
 
 export function generateStaticParams() {
-  return supportedLocales.map((lang) => ({ lang }));
+  return routeLocales.map((lang) => ({ lang }));
 }
 
 const content = {
@@ -27,7 +27,7 @@ export default async function ContactPage({ params }: PageProps) {
   const copy = content[resolved.lang === "ja" ? "ja" : "en"];
   return (
     <main className="legal-page">
-      <link rel="canonical" href={`https://drum-score.pages.dev/${lang}/contact`} />
+      <link rel="canonical" href={`https://drum-score.pages.dev${localePath(lang, "/contact")}`} />
       <h1>{copy.title}</h1>
       <p>{copy.intro}</p>
       <div className="contact-form">
@@ -47,4 +47,4 @@ export default async function ContactPage({ params }: PageProps) {
     </main>
   );
 }
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";

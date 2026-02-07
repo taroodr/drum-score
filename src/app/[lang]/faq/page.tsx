@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { faqContent } from "@/lib/content";
-import { supportedLocales } from "@/lib/locales";
+import { supportedLocales, routeLocales, localePath } from "@/lib/locales";
 
 type PageProps = {
   params: Promise<{ lang: string }>;
 };
 
 export function generateStaticParams() {
-  return supportedLocales.map((lang) => ({ lang }));
+  return routeLocales.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -21,8 +21,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         ? "ドラム譜の読み方、8ビート練習、書き出し方法などよくある質問をまとめています。"
         : "Common questions about drum notation reading, 8 beat practice, and export workflow.",
     alternates: {
-      canonical: `/${resolved.lang}/faq`,
-      languages: Object.fromEntries(supportedLocales.map((code) => [code, `/${code}/faq`])),
+      canonical: localePath(resolved.lang, "/faq"),
+      languages: Object.fromEntries(supportedLocales.map((code) => [code, localePath(code, "/faq")])),
     },
   };
 }
