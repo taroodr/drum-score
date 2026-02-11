@@ -1,18 +1,106 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { signInWithGoogle, signOut, isFirebaseConfigured } from "@/lib/auth";
 import { useLanguage } from "@/components/LanguageProvider";
+import { localePath } from "@/lib/locales";
+import { getMyPublicProfile, saveMyPublicProfile } from "@/lib/firestore";
+import { isPublicUsername, normalizeUsername, suggestUsername } from "@/lib/username";
 
 export default function AuthButton() {
   const { user, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [configured, setConfigured] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [mustSetUsername, setMustSetUsername] = useState(false);
+  const [editingUsername, setEditingUsername] = useState("");
+  const [onboardingMessage, setOnboardingMessage] = useState("");
+  const [savingOnboarding, setSavingOnboarding] = useState(false);
 
   useEffect(() => {
     setConfigured(isFirebaseConfigured());
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUsername(null);
+      setMustSetUsername(false);
+      setEditingUsername("");
+      setOnboardingMessage("");
+      return;
+    }
+    let cancelled = false;
+    getMyPublicProfile(user.uid, {
+      displayName: user.displayName || user.email || "",
+      avatarUrl: user.photoURL,
+    }).then((profile) => {
+      if (cancelled) return;
+      const existingUsername = profile?.username || null;
+      setUsername(existingUsername);
+      if (!existingUsername) {
+        const seed = user.email?.split("@")[0] || user.displayName || "user";
+        setEditingUsername(suggestUsername(seed));
+        setMustSetUsername(true);
+      } else {
+        setMustSetUsername(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  async function handleSaveInitialUsername() {
+    if (!user) return;
+    const normalized = normalizeUsername(editingUsername);
+    if (!isPublicUsername(normalized)) {
+      setOnboardingMessage(
+        locale === "ja"
+          ? "username は小文字英数字と _ の 3〜20 文字で入力してください。"
+          : "Username must be 3-20 chars of lowercase letters, numbers, or _."
+      );
+      return;
+    }
+
+    setSavingOnboarding(true);
+    setOnboardingMessage("");
+    const result = await saveMyPublicProfile(user.uid, {
+      username: normalized,
+      displayName: (user.displayName || "").trim() || normalized,
+      avatarUrl: user.photoURL || null,
+      bio: "",
+      links: [],
+    });
+    setSavingOnboarding(false);
+
+    if (!result.ok) {
+      const message =
+        result.code === "username_taken"
+          ? locale === "ja"
+            ? "その username は既に使用されています。"
+            : "That username is already taken."
+          : result.code === "username_reserved"
+            ? locale === "ja"
+              ? "その username は現在使えません。別の username を入力してください。"
+              : "That username is reserved. Please choose another one."
+            : result.code === "username_change_too_soon"
+              ? locale === "ja"
+                ? "username 変更制限により保存できません。"
+                : "Could not save due to username change limits."
+              : locale === "ja"
+                ? "保存に失敗しました。もう一度お試しください。"
+                : "Failed to save. Please try again.";
+      setOnboardingMessage(message);
+      return;
+    }
+
+    setUsername(result.profile.username);
+    setEditingUsername(result.profile.username || "");
+    setMustSetUsername(false);
+    setOnboardingMessage("");
+  }
 
   if (!configured) {
     return null;
@@ -27,23 +115,95 @@ export default function AuthButton() {
   }
 
   if (user) {
+    const profileHref = username
+      ? `/${username}`
+      : localePath(locale, "/my/scores");
+    const fallbackInitial = (user.displayName || user.email || "U")
+      .trim()
+      .slice(0, 1)
+      .toUpperCase();
+
     return (
-      <div className="auth-button-wrap">
-        <span className="auth-user">
-          {user.photoURL && (
-            <img
-              src={user.photoURL}
-              alt=""
-              className="auth-avatar"
-              referrerPolicy="no-referrer"
-            />
-          )}
-          <span className="auth-name">{user.displayName || user.email}</span>
-        </span>
-        <button type="button" className="auth-btn ghost" onClick={signOut}>
-          {t("auth.logout")}
-        </button>
-      </div>
+      <>
+        <div className="auth-button-wrap">
+          <Link
+            href={profileHref}
+            className="auth-user auth-user-icon-only"
+            aria-label={locale === "ja" ? "プロフィール" : "Profile"}
+            title={username ? `@${username}` : locale === "ja" ? "プロフィール設定" : "Set profile"}
+          >
+            {user.photoURL && (
+              <img
+                src={user.photoURL}
+                alt=""
+                className="auth-avatar"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            {!user.photoURL && (
+              <span className="auth-avatar auth-avatar-fallback">{fallbackInitial}</span>
+            )}
+          </Link>
+          <button type="button" className="auth-btn ghost" onClick={signOut}>
+            {t("auth.logout")}
+          </button>
+        </div>
+
+        {mustSetUsername && (
+          <div className="modal-overlay">
+            <div className="modal-content modal-small">
+              <div className="modal-header">
+                <h3>{locale === "ja" ? "username を登録してください" : "Set your username"}</h3>
+              </div>
+              <div className="modal-body">
+                <p className="helper" style={{ marginBottom: 12 }}>
+                  {locale === "ja"
+                    ? "最初に公開プロフィール用 username の登録が必要です。"
+                    : "A public profile username is required on first sign-in."}
+                </p>
+                <label className="profile-field">
+                  <span>username</span>
+                  <input
+                    value={editingUsername}
+                    onChange={(e) => setEditingUsername(normalizeUsername(e.target.value))}
+                    placeholder="taro"
+                    autoFocus
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                </label>
+                <p className="helper" style={{ marginTop: 8 }}>
+                  https://drum-score.pages.dev/{normalizeUsername(editingUsername) || "..."}
+                </p>
+                {onboardingMessage && (
+                  <p className="helper" style={{ marginTop: 8 }}>
+                    {onboardingMessage}
+                  </p>
+                )}
+                <div className="button-row" style={{ marginTop: 14 }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveInitialUsername}
+                    disabled={savingOnboarding || !isPublicUsername(normalizeUsername(editingUsername))}
+                  >
+                    {savingOnboarding
+                      ? locale === "ja"
+                        ? "保存中..."
+                        : "Saving..."
+                      : locale === "ja"
+                        ? "登録して続行"
+                        : "Save and continue"}
+                  </button>
+                  <button type="button" className="ghost" onClick={signOut} disabled={savingOnboarding}>
+                    {locale === "ja" ? "ログアウト" : "Sign out"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 

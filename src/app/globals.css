@@ -329,6 +329,38 @@ h1 {
   line-height: 1.6;
 }
 
+.profile-editor-card {
+  gap: 12px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-field span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.profile-field input,
+.profile-field textarea {
+  width: 100%;
+  border: 1px solid var(--paper-edge);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  padding: 10px 12px;
+}
+
+.profile-field textarea {
+  resize: vertical;
+}
+
+.profile-helper {
+  margin-top: -2px;
+}
+
 .faq-list {
   display: grid;
   gap: 16px;
@@ -1260,11 +1292,25 @@ h1 {
   color: var(--ink);
 }
 
+.auth-user-icon-only {
+  gap: 0;
+}
+
 .auth-avatar {
   width: 28px;
   height: 28px;
   border-radius: 50%;
   object-fit: cover;
+  display: grid;
+  place-items: center;
+}
+
+.auth-avatar-fallback {
+  border: 1px solid var(--paper-edge);
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--ink);
 }
 
 .auth-name {
@@ -1272,6 +1318,14 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.auth-profile-link {
+  font-size: 12px;
+  color: var(--accent);
+  border: 1px solid var(--paper-edge);
+  border-radius: 999px;
+  padding: 5px 10px;
 }
 
 .auth-btn {
@@ -1442,6 +1496,13 @@ h1 {
   transition: all 0.15s ease;
 }
 
+a.score-action {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .score-action:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--ink);
@@ -1463,6 +1524,11 @@ h1 {
   text-align: center;
   padding: 32px 16px;
   color: var(--muted);
+}
+
+.disabled-link {
+  pointer-events: none;
+  opacity: 0.45;
 }
 
 /* Save dialog */

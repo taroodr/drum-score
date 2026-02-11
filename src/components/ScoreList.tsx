@@ -3,7 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useLanguage } from "@/components/LanguageProvider";
-import { listScores, deleteScore, duplicateScore, type CloudScore } from "@/lib/firestore";
+import { localePath } from "@/lib/locales";
+import {
+  listScores,
+  deleteScore,
+  duplicateScore,
+  setScoreVisibility,
+  type CloudScore,
+} from "@/lib/firestore";
 
 type Props = {
   isOpen: boolean;
@@ -18,6 +25,8 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [togglingPublicId, setTogglingPublicId] = useState<string | null>(null);
+  const [togglingAuthorId, setTogglingAuthorId] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -98,6 +107,74 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
     onClose();
   };
 
+  const handleTogglePublic = async (score: CloudScore) => {
+    if (!user) return;
+    setTogglingPublicId(score.id);
+    try {
+      const nextIsPublic = !score.isPublic;
+      const success = await setScoreVisibility(user.uid, score.id, {
+        isPublic: nextIsPublic,
+        authorNameVisible: nextIsPublic ? score.authorNameVisible : false,
+        authorDisplayName: user.displayName || user.email || null,
+      });
+      if (success && isMountedRef.current) {
+        setScores((prev) =>
+          prev.map((item) =>
+            item.id === score.id
+              ? {
+                  ...item,
+                  isPublic: nextIsPublic,
+                  publicId: nextIsPublic
+                    ? score.publicId || `${user.uid}_${score.id}`
+                    : null,
+                  authorNameVisible: nextIsPublic ? item.authorNameVisible : false,
+                  authorDisplayNameSnapshot: nextIsPublic
+                    ? user.displayName || user.email || null
+                    : null,
+                }
+              : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to toggle score visibility:", error);
+    } finally {
+      if (isMountedRef.current) setTogglingPublicId(null);
+    }
+  };
+
+  const handleToggleAuthorVisible = async (score: CloudScore) => {
+    if (!user || !score.isPublic) return;
+    setTogglingAuthorId(score.id);
+    try {
+      const nextAuthorVisible = !score.authorNameVisible;
+      const success = await setScoreVisibility(user.uid, score.id, {
+        isPublic: true,
+        authorNameVisible: nextAuthorVisible,
+        authorDisplayName: user.displayName || user.email || null,
+      });
+      if (success && isMountedRef.current) {
+        setScores((prev) =>
+          prev.map((item) =>
+            item.id === score.id
+              ? {
+                  ...item,
+                  authorNameVisible: nextAuthorVisible,
+                  authorDisplayNameSnapshot: nextAuthorVisible
+                    ? user.displayName || user.email || null
+                    : null,
+                }
+              : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to toggle author visibility:", error);
+    } finally {
+      if (isMountedRef.current) setTogglingAuthorId(null);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -128,6 +205,57 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
                       {score.updatedAt.toLocaleDateString(locale)}
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    className="score-action"
+                    onClick={() => handleTogglePublic(score)}
+                    disabled={togglingPublicId === score.id}
+                    title={
+                      score.isPublic
+                        ? locale === "ja"
+                          ? "非公開にする"
+                          : "Make private"
+                        : locale === "ja"
+                          ? "公開する"
+                          : "Make public"
+                    }
+                  >
+                    {togglingPublicId === score.id
+                      ? "..."
+                      : score.isPublic
+                        ? "🌍"
+                        : "🔒"}
+                  </button>
+                  <button
+                    type="button"
+                    className="score-action"
+                    onClick={() => handleToggleAuthorVisible(score)}
+                    disabled={!score.isPublic || togglingAuthorId === score.id}
+                    title={
+                      score.authorNameVisible
+                        ? locale === "ja"
+                          ? "投稿者名を非表示"
+                          : "Hide author name"
+                        : locale === "ja"
+                          ? "投稿者名を表示"
+                          : "Show author name"
+                    }
+                  >
+                    {togglingAuthorId === score.id
+                      ? "..."
+                      : score.authorNameVisible
+                        ? "👤"
+                        : "🙈"}
+                  </button>
+                  {score.isPublic && score.publicId && (
+                    <a
+                      className="score-action"
+                      href={localePath(locale, `/community/scores/${score.publicId}`)}
+                      title={locale === "ja" ? "公開ページを開く" : "Open public page"}
+                    >
+                      ↗
+                    </a>
+                  )}
                   <button
                     type="button"
                     className="score-action"

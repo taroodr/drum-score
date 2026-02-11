@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
-import { sampleScores, tutorialArticles } from "@/lib/content";
+import { tutorialArticles } from "@/lib/content";
 import { supportedLocales, localePath } from "@/lib/locales";
+import { listPublicScoresForSitemap } from "@/lib/firestorePublicServer";
+import { listPublicProfilesForSitemap } from "@/lib/publicProfilesServer";
 
 export const dynamic = "force-static";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://drum-score.pages.dev";
   const entries: MetadataRoute.Sitemap = [];
+  const publicScores = await listPublicScoresForSitemap(300);
+  const publicProfiles = await listPublicProfilesForSitemap(300);
 
   supportedLocales.forEach((lang) => {
     const prefix = localePath(lang);
@@ -29,10 +33,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     });
     entries.push({
-      url: `${base}${localePath(lang, "/scores")}`,
+      url: `${base}${localePath(lang, "/community/scores")}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.7,
+    });
+    entries.push({
+      url: `${base}${localePath(lang, "/my/scores")}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 0.7,
+      priority: 0.4,
     });
     entries.push({
       url: `${base}${localePath(lang, "/privacy")}`,
@@ -56,13 +66,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       });
     });
 
-    sampleScores.forEach((score) => {
+    publicScores.forEach((score) => {
       entries.push({
-        url: `${base}${localePath(lang, `/scores/${score.slug}`)}`,
-        lastModified: new Date(score.updatedAt),
-        changeFrequency: "monthly",
-        priority: 0.8,
+        url: `${base}${localePath(lang, `/community/scores/${score.id}`)}`,
+        lastModified: score.updatedAt,
+        changeFrequency: "weekly",
+        priority: 0.6,
       });
+    });
+  });
+
+  publicProfiles.forEach((profile) => {
+    entries.push({
+      url: `${base}/${profile.username}`,
+      lastModified: profile.updatedAt,
+      changeFrequency: "weekly",
+      priority: 0.5,
     });
   });
 

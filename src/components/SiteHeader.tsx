@@ -19,7 +19,8 @@ export default function SiteHeader() {
         </Link>
         <nav className="site-nav" aria-label="Primary">
           <Link href={localePath(locale, "/blog")}>Blog</Link>
-          <Link href={localePath(locale, "/scores")}>Scores</Link>
+          <Link href={localePath(locale, "/community/scores")}>Community</Link>
+          <Link href={localePath(locale, "/my/scores")}>My Scores</Link>
           <Link href={localePath(locale, "/faq")}>FAQ</Link>
         </nav>
         <div className="header-actions">

@@ -38,7 +38,9 @@ export default function SiteFooter() {
         <div className="footer-links">
           <a href={localePath(locale, "/blog")}>Blog</a>
           <span className="footer-sep">·</span>
-          <a href={localePath(locale, "/scores")}>Scores</a>
+          <a href={localePath(locale, "/community/scores")}>Community</a>
+          <span className="footer-sep">·</span>
+          <a href={localePath(locale, "/my/scores")}>My Scores</a>
           <span className="footer-sep">·</span>
           <a href={localePath(locale, "/faq")}>FAQ</a>
           <span className="footer-sep">·</span>
