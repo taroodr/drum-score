@@ -74,12 +74,76 @@ export default async function CommunityScoresPage({ params, searchParams }: Page
                   {score.title}
                 </Link>
               </h2>
+              {score.authorNameVisible &&
+                (score.authorDisplayNameSnapshot || score.authorUsernameSnapshot) && (
+                  <div className="community-author">
+                    {score.authorUsernameSnapshot ? (
+                      <Link
+                        href={`/${score.authorUsernameSnapshot}`}
+                        className="community-author-avatar-link"
+                        aria-label={
+                          isJa
+                            ? `@${score.authorUsernameSnapshot} のプロフィール`
+                            : `Open @${score.authorUsernameSnapshot} profile`
+                        }
+                      >
+                        {score.authorAvatarUrlSnapshot ? (
+                          <img
+                            src={score.authorAvatarUrlSnapshot}
+                            alt=""
+                            className="community-author-avatar"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="community-author-fallback">
+                            {(score.authorDisplayNameSnapshot ||
+                              score.authorUsernameSnapshot ||
+                              "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      <span className="community-author-avatar-link">
+                        {score.authorAvatarUrlSnapshot ? (
+                          <img
+                            src={score.authorAvatarUrlSnapshot}
+                            alt=""
+                            className="community-author-avatar"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="community-author-fallback">
+                            {(score.authorDisplayNameSnapshot || "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <div className="community-author-meta">
+                      <p className="community-author-name">
+                        {score.authorDisplayNameSnapshot ||
+                          (score.authorUsernameSnapshot
+                            ? `@${score.authorUsernameSnapshot}`
+                            : isJa
+                              ? "不明ユーザー"
+                              : "Unknown user")}
+                      </p>
+                      {score.authorUsernameSnapshot && (
+                        <p className="community-author-username">
+                          <Link href={`/${score.authorUsernameSnapshot}`}>
+                            @{score.authorUsernameSnapshot}
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               <p className="legal-updated">
                 {isJa ? "更新日" : "Updated"}: {score.updatedAt.toLocaleDateString()}
               </p>
-              {score.authorNameVisible && score.authorDisplayNameSnapshot && (
-                <p>{isJa ? "投稿者" : "By"}: {score.authorDisplayNameSnapshot}</p>
-              )}
             </article>
           ))}
         </div>

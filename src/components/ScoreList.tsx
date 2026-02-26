@@ -114,8 +114,9 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
       const nextIsPublic = !score.isPublic;
       const success = await setScoreVisibility(user.uid, score.id, {
         isPublic: nextIsPublic,
-        authorNameVisible: nextIsPublic ? score.authorNameVisible : false,
+        authorNameVisible: nextIsPublic ? true : false,
         authorDisplayName: user.displayName || user.email || null,
+        authorAvatarUrl: user.photoURL || null,
       });
       if (success && isMountedRef.current) {
         setScores((prev) =>
@@ -127,7 +128,7 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
                   publicId: nextIsPublic
                     ? score.publicId || `${user.uid}_${score.id}`
                     : null,
-                  authorNameVisible: nextIsPublic ? item.authorNameVisible : false,
+                  authorNameVisible: nextIsPublic ? true : false,
                   authorDisplayNameSnapshot: nextIsPublic
                     ? user.displayName || user.email || null
                     : null,
@@ -152,6 +153,7 @@ export default function ScoreList({ isOpen, onClose, onSelect }: Props) {
         isPublic: true,
         authorNameVisible: nextAuthorVisible,
         authorDisplayName: user.displayName || user.email || null,
+        authorAvatarUrl: user.photoURL || null,
       });
       if (success && isMountedRef.current) {
         setScores((prev) =>

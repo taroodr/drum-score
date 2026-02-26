@@ -144,9 +144,6 @@ export default function AuthButton() {
               <span className="auth-avatar auth-avatar-fallback">{fallbackInitial}</span>
             )}
           </Link>
-          <button type="button" className="auth-btn ghost" onClick={signOut}>
-            {t("auth.logout")}
-          </button>
         </div>
 
         {mustSetUsername && (

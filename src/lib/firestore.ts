@@ -52,6 +52,8 @@ export type PublicScore = {
   data: SavedGrid;
   authorNameVisible: boolean;
   authorDisplayNameSnapshot: string | null;
+  authorUsernameSnapshot: string | null;
+  authorAvatarUrlSnapshot: string | null;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date;
@@ -107,6 +109,8 @@ type FirestorePublicScore = {
   data: SavedGrid;
   authorNameVisible: boolean;
   authorDisplayNameSnapshot?: string | null;
+  authorUsernameSnapshot?: string | null;
+  authorAvatarUrlSnapshot?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   publishedAt: Timestamp;
@@ -235,6 +239,8 @@ function toPublicScore(docId: string, data: FirestorePublicScore): PublicScore {
     data: data.data,
     authorNameVisible: !!data.authorNameVisible,
     authorDisplayNameSnapshot: data.authorDisplayNameSnapshot ?? null,
+    authorUsernameSnapshot: data.authorUsernameSnapshot ?? null,
+    authorAvatarUrlSnapshot: data.authorAvatarUrlSnapshot ?? null,
     createdAt: data.createdAt?.toDate() || new Date(),
     updatedAt: data.updatedAt?.toDate() || new Date(),
     publishedAt: data.publishedAt?.toDate() || new Date(),
@@ -450,6 +456,7 @@ export async function setScoreVisibility(
     isPublic: boolean;
     authorNameVisible: boolean;
     authorDisplayName?: string | null;
+    authorAvatarUrl?: string | null;
   }
 ): Promise<boolean> {
   const db = getFirebaseDb();
@@ -468,8 +475,25 @@ export async function setScoreVisibility(
 
     if (options.isPublic) {
       const publicRef = doc(publicScoresRef, publicId);
+      const profileRef = getUserProfileDoc(userId);
+      const profileSnap = profileRef ? await getDoc(profileRef) : null;
+      const profileData = profileSnap?.exists()
+        ? (profileSnap.data() as FirestoreUserProfile)
+        : null;
       const authorDisplayNameSnapshot = options.authorNameVisible
-        ? options.authorDisplayName || null
+        ? profileData?.displayName?.trim() ||
+          options.authorDisplayName ||
+          null
+        : null;
+      const authorUsernameSnapshot = options.authorNameVisible
+        ? profileData?.username && isPublicUsername(normalizeUsername(profileData.username))
+          ? normalizeUsername(profileData.username)
+          : null
+        : null;
+      const authorAvatarUrlSnapshot = options.authorNameVisible
+        ? profileData?.avatarUrl?.trim() ||
+          options.authorAvatarUrl?.trim() ||
+          null
         : null;
 
       batch.update(scoreRef, {
@@ -477,6 +501,8 @@ export async function setScoreVisibility(
         publicId,
         authorNameVisible: options.authorNameVisible,
         authorDisplayNameSnapshot,
+        authorUsernameSnapshot,
+        authorAvatarUrlSnapshot,
         publishedAt: scoreData.publishedAt ?? serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -491,6 +517,8 @@ export async function setScoreVisibility(
           data: scoreData.data,
           authorNameVisible: options.authorNameVisible,
           authorDisplayNameSnapshot,
+          authorUsernameSnapshot,
+          authorAvatarUrlSnapshot,
           createdAt: scoreData.createdAt ?? serverTimestamp(),
           publishedAt: scoreData.publishedAt ?? serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -508,6 +536,8 @@ export async function setScoreVisibility(
         publicId: null,
         authorNameVisible: false,
         authorDisplayNameSnapshot: null,
+        authorUsernameSnapshot: null,
+        authorAvatarUrlSnapshot: null,
         publishedAt: null,
         updatedAt: serverTimestamp(),
       });

@@ -57,12 +57,70 @@ export default async function CommunityScoresPage({ searchParams }: PageProps) {
               <h2>
                 <Link href={`/community/scores/${score.id}`}>{score.title}</Link>
               </h2>
+              {score.authorNameVisible &&
+                (score.authorDisplayNameSnapshot || score.authorUsernameSnapshot) && (
+                  <div className="community-author">
+                    {score.authorUsernameSnapshot ? (
+                      <Link
+                        href={`/${score.authorUsernameSnapshot}`}
+                        className="community-author-avatar-link"
+                        aria-label={`Open @${score.authorUsernameSnapshot} profile`}
+                      >
+                        {score.authorAvatarUrlSnapshot ? (
+                          <img
+                            src={score.authorAvatarUrlSnapshot}
+                            alt=""
+                            className="community-author-avatar"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="community-author-fallback">
+                            {(score.authorDisplayNameSnapshot ||
+                              score.authorUsernameSnapshot ||
+                              "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </Link>
+                    ) : (
+                      <span className="community-author-avatar-link">
+                        {score.authorAvatarUrlSnapshot ? (
+                          <img
+                            src={score.authorAvatarUrlSnapshot}
+                            alt=""
+                            className="community-author-avatar"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="community-author-fallback">
+                            {(score.authorDisplayNameSnapshot || "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <div className="community-author-meta">
+                      <p className="community-author-name">
+                        {score.authorDisplayNameSnapshot ||
+                          (score.authorUsernameSnapshot
+                            ? `@${score.authorUsernameSnapshot}`
+                            : "Unknown user")}
+                      </p>
+                      {score.authorUsernameSnapshot && (
+                        <p className="community-author-username">
+                          <Link href={`/${score.authorUsernameSnapshot}`}>
+                            @{score.authorUsernameSnapshot}
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               <p className="legal-updated">
                 Updated: {score.updatedAt.toLocaleDateString()}
               </p>
-              {score.authorNameVisible && score.authorDisplayNameSnapshot && (
-                <p>By: {score.authorDisplayNameSnapshot}</p>
-              )}
             </article>
           ))}
         </div>

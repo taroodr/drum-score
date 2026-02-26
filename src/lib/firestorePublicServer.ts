@@ -76,6 +76,14 @@ function toPublicScore(doc: FirestoreDocument): PublicScore {
       typeof parsed.authorDisplayNameSnapshot === "string"
         ? parsed.authorDisplayNameSnapshot
         : null,
+    authorUsernameSnapshot:
+      typeof parsed.authorUsernameSnapshot === "string"
+        ? parsed.authorUsernameSnapshot
+        : null,
+    authorAvatarUrlSnapshot:
+      typeof parsed.authorAvatarUrlSnapshot === "string"
+        ? parsed.authorAvatarUrlSnapshot
+        : null,
     createdAt: parseDate(parsed.createdAt, parseDate(doc.createTime)),
     updatedAt: parseDate(parsed.updatedAt, parseDate(doc.updateTime)),
     publishedAt: parseDate(parsed.publishedAt, parseDate(doc.createTime)),
